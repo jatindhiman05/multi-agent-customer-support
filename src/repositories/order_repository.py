@@ -94,3 +94,22 @@ class OrderRepository:
         # Send the UPDATE to PostgreSQL, but do NOT commit.
         # The service/caller owns the transaction boundary.
         self.session.flush()
+
+    def get_for_customer_for_update(
+        self,
+        order_number: str,
+        user_id: uuid.UUID,
+    ) -> Order | None:
+        statement = (
+            select(Order)
+            .options(
+                selectinload(Order.items),
+            )
+            .where(
+                Order.order_number == order_number,
+                Order.user_id == user_id,
+            )
+            .with_for_update()
+        )
+
+        return self.session.scalar(statement)
