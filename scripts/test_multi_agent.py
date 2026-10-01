@@ -15,16 +15,23 @@ def get_test_customer_id() -> str:
                 WHERE email = :email
                 """
             ),
-            {"email": "alex@example.com"},
+            {
+                "email": "alex@example.com",
+            },
         ).scalar_one_or_none()
 
         if customer_id is None:
-            raise RuntimeError("Test customer not found.")
+            raise RuntimeError(
+                "Test customer not found."
+            )
 
         return str(customer_id)
 
 
-def run_test(message: str):
+def run_test(
+    message: str,
+    customer_id: str,
+):
     print("\n" + "=" * 70)
     print(f"USER: {message}")
     print("=" * 70)
@@ -35,6 +42,9 @@ def run_test(message: str):
                 HumanMessage(content=message)
             ],
             "route": None,
+
+            # Simulates identity supplied by authentication.
+            "customer_id": customer_id,
         }
     )
 
@@ -48,14 +58,16 @@ if __name__ == "__main__":
     customer_id = get_test_customer_id()
 
     run_test(
-        f"My customer ID is {customer_id}. "
-        "Where is my order ORD-1003?"
+        message="Where is my order ORD-1003?",
+        customer_id=customer_id,
     )
 
     run_test(
-        "How long do I have to return a VoltNest product?"
+        message="How long do I have to return a VoltNest product?",
+        customer_id=customer_id,
     )
 
     run_test(
-        "Does the VoltNest warranty cover accidental damage?"
+        message="Does the VoltNest warranty cover accidental damage?",
+        customer_id=customer_id,
     )

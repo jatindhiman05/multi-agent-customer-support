@@ -1,11 +1,18 @@
 from langgraph.graph import END, START, StateGraph
 
 from src.agents.knowledge_agent import knowledge_agent
-from src.agents.order_agent import order_agent
+from src.agents.order_agent import create_order_agent
 from src.graph.state import SupportState
+from src.graph.supervisor import supervisor_node
 
 
 def order_node(state: SupportState) -> dict:
+    customer_id = state["customer_id"]
+
+    order_agent = create_order_agent(
+        customer_id=customer_id
+    )
+
     result = order_agent.invoke(
         {
             "messages": state["messages"],
@@ -34,9 +41,6 @@ def route_request(state: SupportState) -> str:
 
 
 def build_support_graph():
-    # Import here to avoid unnecessary import coupling.
-    from src.graph.supervisor import supervisor_node
-
     graph = StateGraph(SupportState)
 
     graph.add_node(
