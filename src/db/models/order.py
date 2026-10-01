@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.models.shipment import Shipment
 from src.db.base import Base
-
+from src.db.models.return_request import ReturnRequest
 if TYPE_CHECKING:
     from src.db.models.order_item import OrderItem
     from src.db.models.user import User
@@ -175,5 +175,8 @@ class Order(Base):
         back_populates="order",
     )
     shipments: Mapped[list["Shipment"]] = relationship(
+        back_populates="order",
+    )
+    returns: Mapped[list["ReturnRequest"]] = relationship(
         back_populates="order",
     )

@@ -7,7 +7,7 @@ from src.db.models.shipment_item import ShipmentItem
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from src.db.models.return_item import ReturnItem
 from src.db.base import Base
 
 if TYPE_CHECKING:
@@ -86,5 +86,8 @@ class OrderItem(Base):
         back_populates="order_items",
     )
     shipment_items: Mapped[list["ShipmentItem"]] = relationship(
+        back_populates="order_item",
+    )
+    return_items: Mapped[list["ReturnItem"]] = relationship(
         back_populates="order_item",
     )

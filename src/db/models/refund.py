@@ -8,39 +8,38 @@ from typing import TYPE_CHECKING
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from src.db.models.refund import Refund
+
 from src.db.base import Base
 
 if TYPE_CHECKING:
-    from src.db.models.order import Order
+    from src.db.models.payment import Payment
+    from src.db.models.return_request import ReturnRequest
 
 
-class Payment(Base):
-    __tablename__ = "payments"
+class Refund(Base):
+    __tablename__ = "refunds"
 
     __table_args__ = (
         CheckConstraint(
             """
             status IN (
                 'pending',
-                'authorized',
-                'captured',
+                'processing',
+                'completed',
                 'failed',
-                'cancelled',
-                'partially_refunded',
-                'refunded'
+                'cancelled'
             )
             """,
-            name="ck_payments_status",
+            name="ck_refunds_status",
         ),
         CheckConstraint(
             "amount >= 0",
-            name="ck_payments_amount_non_negative",
+            name="ck_refunds_amount_non_negative",
         ),
         UniqueConstraint(
             "provider",
-            "provider_transaction_id",
-            name="uq_payments_provider_transaction",
+            "provider_refund_id",
+            name="uq_refunds_provider_refund",
         ),
     )
 
@@ -50,10 +49,17 @@ class Payment(Base):
         default=uuid.uuid4,
     )
 
-    order_id: Mapped[uuid.UUID] = mapped_column(
+    payment_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("orders.id"),
+        ForeignKey("payments.id"),
         nullable=False,
+        index=True,
+    )
+
+    return_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("returns.id"),
+        nullable=True,
         index=True,
     )
 
@@ -62,14 +68,9 @@ class Payment(Base):
         nullable=False,
     )
 
-    provider_transaction_id: Mapped[str | None] = mapped_column(
+    provider_refund_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
-    )
-
-    payment_method: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
     )
 
     status: Mapped[str] = mapped_column(
@@ -86,6 +87,11 @@ class Payment(Base):
     currency: Mapped[str] = mapped_column(
         String(3),
         nullable=False,
+    )
+
+    reason: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
     )
 
     failure_code: Mapped[str | None] = mapped_column(
@@ -111,9 +117,10 @@ class Payment(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    order: Mapped["Order"] = relationship(
-        back_populates="payments",
+    payment: Mapped["Payment"] = relationship(
+        back_populates="refunds",
     )
-    refunds: Mapped[list["Refund"]] = relationship(
-        back_populates="payment",
+
+    return_request: Mapped["ReturnRequest | None"] = relationship(
+        back_populates="refunds",
     )

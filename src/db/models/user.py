@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column,relationship
 from src.db.models.order import Order
 from src.db.base import Base
+from src.db.models.return_request import ReturnRequest
 
 
 class User(Base):
@@ -81,5 +82,8 @@ class User(Base):
     )
 
     orders: Mapped[list["Order"]] = relationship(
+        back_populates="user",
+    )
+    returns: Mapped[list["ReturnRequest"]] = relationship(
         back_populates="user",
     )
