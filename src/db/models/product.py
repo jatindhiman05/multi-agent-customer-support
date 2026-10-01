@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from src.db.models.order_item import OrderItem
 from src.db.base import Base
 
 if TYPE_CHECKING:
@@ -77,5 +77,9 @@ class Product(Base):
     )
 
     inventory: Mapped["Inventory | None"] = relationship(
+        back_populates="product",
+    )
+
+    order_items: Mapped[list["OrderItem"]] = relationship(
         back_populates="product",
     )

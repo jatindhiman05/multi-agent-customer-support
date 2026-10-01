@@ -4,8 +4,8 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import CheckConstraint, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
-
+from sqlalchemy.orm import Mapped, mapped_column,relationship
+from src.db.models.order import Order
 from src.db.base import Base
 
 
@@ -78,4 +78,8 @@ class User(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    orders: Mapped[list["Order"]] = relationship(
+        back_populates="user",
     )
