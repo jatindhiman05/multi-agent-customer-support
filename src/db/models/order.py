@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
-
+from src.db.models.payment import Payment
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -168,5 +168,9 @@ class Order(Base):
     )
 
     items: Mapped[list["OrderItem"]] = relationship(
+        back_populates="order",
+    )
+
+    payments: Mapped[list["Payment"]] = relationship(
         back_populates="order",
     )
