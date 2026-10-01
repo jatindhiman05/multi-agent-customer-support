@@ -12,7 +12,10 @@ class OrderRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_by_id(self, order_id: uuid.UUID) -> Order | None:
+    def get_by_id(
+        self,
+        order_id: uuid.UUID,
+    ) -> Order | None:
         statement = (
             select(Order)
             .where(Order.id == order_id)
@@ -20,7 +23,10 @@ class OrderRepository:
 
         return self.session.scalar(statement)
 
-    def get_by_number(self, order_number: str) -> Order | None:
+    def get_by_number(
+        self,
+        order_number: str,
+    ) -> Order | None:
         statement = (
             select(Order)
             .where(Order.order_number == order_number)
@@ -77,3 +83,14 @@ class OrderRepository:
         )
 
         return self.session.scalar(statement)
+
+    def set_status(
+        self,
+        order: Order,
+        status: str,
+    ) -> None:
+        order.status = status
+
+        # Send the UPDATE to PostgreSQL, but do NOT commit.
+        # The service/caller owns the transaction boundary.
+        self.session.flush()

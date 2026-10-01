@@ -103,6 +103,78 @@ def main() -> None:
         except OrderNotFoundError:
             print("Order not found handled correctly")
 
+        # ---------------------------------------------------------
+        # CAPTURED PAYMENT CANCELLATION
+        # ---------------------------------------------------------
+
+        print("\n--- Captured payment cancellation ---")
+
+        result = service.cancel_order(
+            order_number="ORD-1002",
+            customer_id=customer.id,
+        )
+
+        print("Cancelled:", result.cancelled)
+        print("Reason:", result.reason)
+        print("Requires refund:", result.requires_refund)
+
+        # Verify that ORD-1002 was NOT changed.
+        captured_payment_order = service.get_order(
+            order_number="ORD-1002",
+            customer_id=customer.id,
+        )
+
+        print(
+            "Order status:",
+            captured_payment_order.status,
+        )
+
+        # ---------------------------------------------------------
+        # CANCELLATION EXECUTION
+        # ---------------------------------------------------------
+
+        print("\n--- Cancellation execution ---")
+
+        result = service.cancel_order(
+            order_number="ORD-1006",
+            customer_id=customer.id,
+        )
+
+        print("Cancelled:", result.cancelled)
+        print("Reason:", result.reason)
+        print("Requires refund:", result.requires_refund)
+
+        # set_status() called session.flush(), so the change has
+        # reached PostgreSQL inside the current transaction.
+        cancelled_order = service.get_order(
+            order_number="ORD-1006",
+            customer_id=customer.id,
+        )
+
+        print(
+            "Database-visible status:",
+            cancelled_order.status,
+        )
+
+        # ---------------------------------------------------------
+        # TRANSACTION ROLLBACK
+        # ---------------------------------------------------------
+
+        # We do not want this test to permanently modify seed data.
+        # Because the repository only flushed and did not commit,
+        # rollback should restore ORD-1006 to "pending".
+        session.rollback()
+
+        restored_order = service.get_order(
+            order_number="ORD-1006",
+            customer_id=customer.id,
+        )
+
+        print(
+            "Status after rollback:",
+            restored_order.status,
+        )
+
 
 if __name__ == "__main__":
     main()
