@@ -399,7 +399,15 @@ def seed_shipments(
     session: Session,
     orders: dict[str, Order],
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime(
+        2026,
+        10,
+        1,
+        12,
+        0,
+        0,
+        tzinfo=timezone.utc,
+    )
 
     delivered = seed_shipment(
         session,
