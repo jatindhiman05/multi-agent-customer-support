@@ -65,3 +65,15 @@ class PaymentRepository:
     ) -> None:
         payment.status = status
         self.session.flush()
+
+    def get_by_id_for_update(
+        self,
+        payment_id: uuid.UUID,
+    ) -> Payment | None:
+        statement = (
+            select(Payment)
+            .where(Payment.id == payment_id)
+            .with_for_update()
+        )
+
+        return self.session.scalar(statement)

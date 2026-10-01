@@ -138,19 +138,69 @@ class RefundService:
         reason: str,
         provider_refund_id: str | None = None,
     ) -> RefundResult:
-        payment = self.get_payment(payment_id)
+        # ---------------------------------------------------------
+        # LOCK PAYMENT
+        # ---------------------------------------------------------
 
-        eligibility = self.check_refund_eligibility(
-            payment_id=payment_id,
-            amount=amount,
+        payment = self.payments.get_by_id_for_update(
+            payment_id
         )
 
-        if not eligibility.allowed:
+        if payment is None:
+            raise PaymentNotFoundError(
+                f"Payment {payment_id} was not found."
+            )
+
+        # The PostgreSQL row lock remains held until this
+        # transaction commits or rolls back.
+
+        # ---------------------------------------------------------
+        # CALCULATE CURRENT REFUNDABLE BALANCE
+        # ---------------------------------------------------------
+
+        refundable_amount = (
+            self.calculate_refundable_amount(payment)
+        )
+
+        # ---------------------------------------------------------
+        # PAYMENT STATUS
+        # ---------------------------------------------------------
+
+        if payment.status not in self.REFUNDABLE_PAYMENT_STATUSES:
             return RefundResult(
                 created=False,
-                reason=eligibility.reason,
+                reason="payment_not_refundable",
                 refund=None,
             )
+
+        # ---------------------------------------------------------
+        # AMOUNT VALIDATION
+        # ---------------------------------------------------------
+
+        if amount <= Decimal("0.00"):
+            return RefundResult(
+                created=False,
+                reason="invalid_refund_amount",
+                refund=None,
+            )
+
+        if refundable_amount <= Decimal("0.00"):
+            return RefundResult(
+                created=False,
+                reason="nothing_left_to_refund",
+                refund=None,
+            )
+
+        if amount > refundable_amount:
+            return RefundResult(
+                created=False,
+                reason="amount_exceeds_refundable_balance",
+                refund=None,
+            )
+
+        # ---------------------------------------------------------
+        # CREATE REFUND
+        # ---------------------------------------------------------
 
         refund = Refund(
             payment_id=payment.id,
