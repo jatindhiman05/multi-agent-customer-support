@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.db.models import Order
 from src.repositories.order_repository import OrderRepository
+from src.services.refund_service import RefundService
 
 
 class OrderNotFoundError(Exception):
@@ -24,6 +25,7 @@ class CancellationResult:
     cancelled: bool
     reason: str
     requires_refund: bool
+    refund_id: uuid.UUID | None = None
 
 
 class OrderService:
@@ -43,6 +45,7 @@ class OrderService:
     def __init__(self, session: Session):
         self.session = session
         self.orders = OrderRepository(session)
+        self.refunds = RefundService(session)
 
     def get_order(
         self,
@@ -155,31 +158,80 @@ class OrderService:
             )
 
         # ---------------------------------------------------------
-        # PAYMENT CHECK
+        # FIND REFUNDABLE PAYMENTS
         # ---------------------------------------------------------
 
-        captured_payment_exists = any(
-            payment.status in {
+        refundable_payments = [
+            payment
+            for payment in order.payments
+            if payment.status in {
                 "captured",
                 "partially_refunded",
             }
-            for payment in order.payments
-        )
+        ]
 
-        # We deliberately do not pretend a captured payment
-        # has been refunded. That requires a separate refund
-        # workflow.
-        if captured_payment_exists:
+        # ---------------------------------------------------------
+        # CAPTURED PAYMENT CANCELLATION
+        # ---------------------------------------------------------
+
+        if refundable_payments:
+            # Multiple captured/refundable payments are an unusual
+            # financial state. Do not choose one arbitrarily.
+            if len(refundable_payments) > 1:
+                return CancellationResult(
+                    cancelled=False,
+                    reason="multiple_refundable_payments_require_review",
+                    requires_refund=True,
+                )
+
+            payment = refundable_payments[0]
+
+            refundable_amount = (
+                self.refunds.calculate_refundable_amount(
+                    payment
+                )
+            )
+
+            if refundable_amount <= 0:
+                return CancellationResult(
+                    cancelled=False,
+                    reason="no_refundable_balance",
+                    requires_refund=True,
+                )
+
+            # Create the refund inside the SAME SQLAlchemy session /
+            # transaction as the order cancellation.
+            refund_result = self.refunds.create_refund(
+                payment_id=payment.id,
+                amount=refundable_amount,
+                reason="order_cancellation",
+            )
+
+            if not refund_result.created:
+                return CancellationResult(
+                    cancelled=False,
+                    reason=refund_result.reason,
+                    requires_refund=True,
+                )
+
+            self.orders.set_status(
+                order=order,
+                status="cancelled",
+            )
+
             return CancellationResult(
-                cancelled=False,
-                reason="captured_payment_requires_refund",
+                cancelled=True,
+                reason="cancelled_with_refund",
                 requires_refund=True,
+                refund_id=refund_result.refund.id,
             )
 
         # ---------------------------------------------------------
-        # MUTATION
+        # CANCELLATION WITHOUT REFUND
         # ---------------------------------------------------------
 
+        # No captured/refundable payment exists, so the order can
+        # simply be cancelled.
         self.orders.set_status(
             order=order,
             status="cancelled",
