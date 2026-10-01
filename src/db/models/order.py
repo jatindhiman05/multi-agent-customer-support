@@ -8,7 +8,7 @@ from src.db.models.payment import Payment
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from src.db.models.shipment import Shipment
 from src.db.base import Base
 
 if TYPE_CHECKING:
@@ -172,5 +172,8 @@ class Order(Base):
     )
 
     payments: Mapped[list["Payment"]] = relationship(
+        back_populates="order",
+    )
+    shipments: Mapped[list["Shipment"]] = relationship(
         back_populates="order",
     )

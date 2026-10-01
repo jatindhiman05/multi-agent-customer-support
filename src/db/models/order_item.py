@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
-
+from src.db.models.shipment_item import ShipmentItem
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -84,4 +84,7 @@ class OrderItem(Base):
 
     product: Mapped["Product"] = relationship(
         back_populates="order_items",
+    )
+    shipment_items: Mapped[list["ShipmentItem"]] = relationship(
+        back_populates="order_item",
     )

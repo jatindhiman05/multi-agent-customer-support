@@ -4,6 +4,9 @@ from src.db.models.order import Order
 from src.db.models.order_item import OrderItem
 from src.db.models.payment import Payment
 from src.db.models.product import Product
+from src.db.models.shipment import Shipment
+from src.db.models.shipment_item import ShipmentItem
+from src.db.models.tracking_event import TrackingEvent
 from src.db.models.user import User
 
 __all__ = [
@@ -14,4 +17,7 @@ __all__ = [
     "Order",
     "OrderItem",
     "Payment",
+    "Shipment",
+    "ShipmentItem",
+    "TrackingEvent",
 ]
