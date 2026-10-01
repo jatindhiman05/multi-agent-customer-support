@@ -14,7 +14,7 @@ from src.db.models.return_request import ReturnRequest
 if TYPE_CHECKING:
     from src.db.models.order_item import OrderItem
     from src.db.models.user import User
-
+from src.db.models.support_ticket import SupportTicket
 
 class Order(Base):
     __tablename__ = "orders"
@@ -178,5 +178,9 @@ class Order(Base):
         back_populates="order",
     )
     returns: Mapped[list["ReturnRequest"]] = relationship(
+        back_populates="order",
+    )
+
+    support_tickets: Mapped[list["SupportTicket"]] = relationship(
         back_populates="order",
     )

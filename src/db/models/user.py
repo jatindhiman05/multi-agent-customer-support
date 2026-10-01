@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
 from sqlalchemy import CheckConstraint, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column,relationship
-from src.db.models.order import Order
-from src.db.base import Base
-from src.db.models.return_request import ReturnRequest
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.db.base import Base
+
+if TYPE_CHECKING:
+    from src.db.models.address import Address
+    from src.db.models.order import Order
+    from src.db.models.return_request import ReturnRequest
+    from src.db.models.support_ticket import SupportTicket
 
 class User(Base):
     __tablename__ = "users"
@@ -81,9 +87,24 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
+    addresses: Mapped[list["Address"]] = relationship(
+        back_populates="user",
+    )
+
     orders: Mapped[list["Order"]] = relationship(
         back_populates="user",
     )
+
     returns: Mapped[list["ReturnRequest"]] = relationship(
         back_populates="user",
+    )
+
+    support_tickets: Mapped[list["SupportTicket"]] = relationship(
+        foreign_keys="SupportTicket.user_id",
+        back_populates="user",
+    )
+
+    assigned_tickets: Mapped[list["SupportTicket"]] = relationship(
+        foreign_keys="SupportTicket.assigned_to",
+        back_populates="assigned_agent",
     )

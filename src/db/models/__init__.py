@@ -8,7 +8,7 @@ from src.db.models.shipment import Shipment
 from src.db.models.shipment_item import ShipmentItem
 from src.db.models.tracking_event import TrackingEvent
 from src.db.models.user import User
-
+from src.db.models.support_ticket import SupportTicket
 from src.db.models.refund import Refund
 from src.db.models.return_item import ReturnItem
 from src.db.models.return_request import ReturnRequest
@@ -27,4 +27,5 @@ __all__ = [
     "ReturnRequest",
     "ReturnItem",
     "Refund",
+    "SupportTicket",
 ]
