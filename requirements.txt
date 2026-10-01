@@ -8,3 +8,4 @@ langchain-core
 langchain-huggingface
 sentence-transformers
 faiss-cpu
+langgraph-checkpoint-postgres

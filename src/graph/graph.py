@@ -1,4 +1,4 @@
-from langgraph.checkpoint.memory import InMemorySaver
+from src.graph.checkpointer import checkpointer
 from langgraph.graph import END, START, StateGraph
 
 from src.agents.knowledge_agent import knowledge_agent
@@ -84,9 +84,6 @@ def build_support_graph():
     )
 
     return graph
-
-
-checkpointer = InMemorySaver()
 
 support_graph = build_support_graph().compile(
     checkpointer=checkpointer
