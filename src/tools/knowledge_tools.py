@@ -8,6 +8,9 @@ from src.db.session import SessionLocal
 from src.knowledge.embeddings import (
     SentenceTransformerEmbeddingProvider,
 )
+from src.knowledge.reranker import (
+    CrossEncoderKnowledgeReranker,
+)
 from src.knowledge.retriever import (
     KnowledgeRetriever,
     RetrievalConfig,
@@ -31,17 +34,35 @@ def get_embedding_provider() -> (
     return SentenceTransformerEmbeddingProvider()
 
 
+@lru_cache(maxsize=1)
+def get_reranker() -> (
+    CrossEncoderKnowledgeReranker
+):
+    """
+    Load the knowledge reranker once per application process.
+
+    The model is expensive to initialize but safe to reuse across
+    retrieval operations.
+    """
+
+    return CrossEncoderKnowledgeReranker()
+
+
 def retrieve_knowledge(
     query: str,
 ):
     """
     Retrieve authoritative VoltNest knowledge from PostgreSQL.
 
+    Retrieval uses pgvector for broad candidate generation followed
+    by cross-encoder reranking for final evidence selection.
+
     A fresh SQLAlchemy session is created for each retrieval operation.
     The underlying engine manages connection pooling.
     """
 
     embedding_provider = get_embedding_provider()
+    reranker = get_reranker()
 
     with SessionLocal() as session:
         index = PgVectorKnowledgeIndex(
@@ -51,9 +72,11 @@ def retrieve_knowledge(
 
         retriever = KnowledgeRetriever(
             index=index,
+            reranker=reranker,
             config=RetrievalConfig(
+                candidate_k=10,
                 top_k=3,
-                minimum_score=0.30,
+                minimum_score=None,
             ),
         )
 
@@ -61,7 +84,9 @@ def retrieve_knowledge(
 
 
 @tool
-def search_knowledge_base(query: str) -> dict:
+def search_knowledge_base(
+    query: str,
+) -> dict:
     """
     Search authoritative VoltNest static knowledge.
 

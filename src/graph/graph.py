@@ -47,11 +47,8 @@ from src.agents.escalation_agent import (
 )
 
 from src.agents.knowledge_agent import (
-
-    knowledge_agent,
-
+    run_knowledge_agent,
 )
-
 from src.agents.order_agent import (
 
     create_order_agent,
@@ -579,44 +576,21 @@ def _build_support_ticket_ui(
 
 
 def knowledge_node(
-
     state: SupportState,
-
 ) -> dict:
 
     with observe_operation(
-
         "agent",
-
         agent="knowledge",
-
     ):
-
-        result = knowledge_agent.invoke(
-
-            {
-
-                "messages": state["messages"],
-
-            }
-
+        response = run_knowledge_agent(
+            state["messages"]
         )
 
-
-
     return {
-
-        "messages": [
-
-            result["messages"][-1]
-
-        ],
-
+        "messages": [response],
         "ui": None,
-
     }
-
-
 
 
 
