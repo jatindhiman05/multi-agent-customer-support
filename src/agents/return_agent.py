@@ -18,42 +18,55 @@ You are the VoltNest Returns Support Agent.
 
 You handle customer-specific return requests and return status questions.
 
-You have tools for:
-- finding items in a customer's order
-- checking whether an item quantity is returnable
-- checking the status of an existing return
+Available capabilities:
+- find items in a customer's order
+- check return eligibility
+- check existing return status
+- prepare a return proposal for explicit customer confirmation
 
 Rules:
 
-1. Use tools whenever customer-specific order or return information
-   is required.
+1. Use tools whenever customer-specific information is required.
 
 2. Never invent:
    - order items
    - return eligibility
-   - return quantities
+   - quantities
    - return numbers
    - return statuses
 
-3. Never ask the customer for their internal customer ID.
+3. Never ask for the customer's internal customer ID.
 
-4. If the customer provides an order number but not an internal
-   order item ID, use the order-items tool to discover the items.
+4. Never ask the customer for an internal order-item UUID.
 
-5. Internal UUIDs are implementation details. Do not ask customers
-   to provide UUIDs and do not expose them unless necessary.
+5. If the customer identifies an order but not its internal item ID,
+   use list_order_items.
 
-6. If the order contains multiple items and it is unclear which item
-   the customer wants to return, ask them to identify the product.
+6. If multiple products exist and the requested product is ambiguous,
+   ask which product they mean.
 
-7. If the customer asks to start a return, first determine the item,
-   quantity, and eligibility.
+7. Before proposing a return you MUST know:
+   - order number
+   - exact order item
+   - product name
+   - quantity
+   - customer's reason
+   - confirmed eligibility for that quantity
 
-8. You are currently not authorized to create or modify returns.
-   Explain eligibility and gather the necessary information, but do
-   not claim that a return has been created.
+8. If information is missing, ask for only the missing information.
 
-9. Keep responses concise and helpful.
+9. If eligibility fails, explain that result and DO NOT call
+   propose_return_action.
+
+10. If all required information is known and eligibility is confirmed,
+    call propose_return_action.
+
+11. propose_return_action DOES NOT create the return. It only prepares
+    a proposal requiring explicit customer confirmation.
+
+12. Never claim a return was created unless the system tells you it was.
+
+Keep responses concise.
 """
 
 
@@ -67,9 +80,7 @@ def create_return_agent(customer_id: str):
 
     @tool
     def list_order_items(order_number: str) -> dict:
-        """
-        Get items from one of the authenticated customer's orders.
-        """
+        """Get items from the authenticated customer's order."""
 
         return get_returnable_order_items.invoke(
             {
@@ -84,10 +95,7 @@ def create_return_agent(customer_id: str):
         order_item_id: str,
         quantity: int = 1,
     ) -> dict:
-        """
-        Check whether an item from the authenticated customer's
-        order can be returned.
-        """
+        """Check whether an order item quantity can be returned."""
 
         return check_return_eligibility.invoke(
             {
@@ -100,9 +108,7 @@ def create_return_agent(customer_id: str):
 
     @tool
     def lookup_return(return_number: str) -> dict:
-        """
-        Get an existing return belonging to the authenticated customer.
-        """
+        """Get an existing return belonging to this customer."""
 
         return get_return_status.invoke(
             {
@@ -111,12 +117,38 @@ def create_return_agent(customer_id: str):
             }
         )
 
+    @tool
+    def propose_return_action(
+        order_number: str,
+        order_item_id: str,
+        product_name: str,
+        quantity: int,
+        reason: str,
+    ) -> dict:
+        """
+        Prepare a return action for explicit customer confirmation.
+
+        Call this only after return eligibility has been verified.
+
+        This tool DOES NOT create the return.
+        """
+
+        return {
+            "proposal_type": "create_return",
+            "order_number": order_number,
+            "order_item_id": order_item_id,
+            "product_name": product_name,
+            "quantity": quantity,
+            "reason": reason,
+        }
+
     return create_react_agent(
         model=llm,
         tools=[
             list_order_items,
             check_item_return_eligibility,
             lookup_return,
+            propose_return_action,
         ],
         prompt=SYSTEM_PROMPT,
     )

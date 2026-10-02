@@ -78,12 +78,9 @@ def chat(
     result = support_graph.invoke(
         {
             "messages": [
-                HumanMessage(
-                    content=request.message
-                )
+                HumanMessage(content=request.message)
             ],
-            "route": None,
-            "customer_id": customer_id,
+            "customer_id": str(customer_id),
         },
         config=config,
     )
