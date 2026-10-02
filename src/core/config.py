@@ -96,6 +96,12 @@ JWT_SECRET = _required_env(
     "JWT_SECRET"
 )
 
+if len(JWT_SECRET) < 32:
+    raise RuntimeError(
+        "JWT_SECRET must contain at least "
+        "32 characters."
+    )
+
 JWT_ALGORITHM = os.getenv(
     "JWT_ALGORITHM",
     "HS256",

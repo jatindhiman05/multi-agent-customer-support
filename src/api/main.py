@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select,text
 
 from src.core.security import (
     create_access_token,
@@ -323,6 +323,35 @@ def health():
         "status": "ok",
     }
 
+@app.get("/ready")
+def readiness():
+    try:
+        with SessionLocal() as session:
+            session.execute(
+                text("SELECT 1")
+            )
+
+        return {
+            "status": "ready",
+            "checks": {
+                "database": "ok",
+            },
+        }
+
+    except Exception:
+        logger.exception(
+            "readiness.database_failed"
+        )
+
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "checks": {
+                    "database": "unavailable",
+                },
+            },
+        )
 
 @app.post(
     "/auth/login",
