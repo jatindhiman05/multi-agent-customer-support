@@ -4,10 +4,14 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
+from src.core.logging import get_logger
+from src.core.observability import observe_operation
 from src.graph.state import SupportState
 
 
 load_dotenv()
+
+logger = get_logger(__name__)
 
 
 class RouteDecision(BaseModel):
@@ -78,6 +82,7 @@ Use when:
 - the customer describes a legal concern requiring human review
 
 Examples:
+
 "I want to talk to a human."
 -> escalation
 
@@ -130,11 +135,21 @@ def supervisor_node(
 ) -> dict:
     messages = state["messages"]
 
-    decision = router_llm.invoke(
-        [
-            ("system", SYSTEM_PROMPT),
-            *messages,
-        ]
+    with observe_operation(
+        "supervisor",
+    ):
+        decision = router_llm.invoke(
+            [
+                ("system", SYSTEM_PROMPT),
+                *messages,
+            ]
+        )
+
+    logger.info(
+        "route.selected",
+        extra={
+            "route": decision.route,
+        },
     )
 
     return {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-
+from src.core.observability import observe_operation
 from langchain_core.messages import (
     AIMessage,
     ToolMessage,
@@ -100,11 +100,15 @@ def order_node(
         customer_id=state["customer_id"]
     )
 
-    result = order_agent.invoke(
-        {
-            "messages": state["messages"],
-        }
-    )
+    with observe_operation(
+        "agent",
+        agent="order",
+    ):
+        result = order_agent.invoke(
+            {
+                "messages": state["messages"],
+            }
+        )
 
     return {
         "messages": [
@@ -116,11 +120,15 @@ def order_node(
 def knowledge_node(
     state: SupportState,
 ) -> dict:
-    result = knowledge_agent.invoke(
-        {
-            "messages": state["messages"],
-        }
-    )
+    with observe_operation(
+        "agent",
+        agent="knowledge",
+    ):
+        result = knowledge_agent.invoke(
+            {
+                "messages": state["messages"],
+            }
+        )
 
     return {
         "messages": [
@@ -139,11 +147,15 @@ def escalation_node(
         )
     )
 
-    result = escalation_agent.invoke(
-        {
-            "messages": state["messages"],
-        }
-    )
+    with observe_operation(
+        "agent",
+        agent="escalation",
+    ):
+        result = escalation_agent.invoke(
+            {
+                "messages": state["messages"],
+            }
+        )
 
     return {
         "messages": [
@@ -159,11 +171,15 @@ def return_node(
         customer_id=state["customer_id"]
     )
 
-    result = return_agent.invoke(
-        {
-            "messages": state["messages"],
-        }
-    )
+    with observe_operation(
+        "agent",
+        agent="returns",
+    ):
+        result = return_agent.invoke(
+            {
+                "messages": state["messages"],
+            }
+        )
 
     proposal = _extract_tool_proposal(
         result["messages"],
@@ -251,11 +267,15 @@ def cancellation_node(
         )
     )
 
-    result = cancellation_agent.invoke(
-        {
-            "messages": state["messages"],
-        }
-    )
+    with observe_operation(
+        "agent",
+        agent="cancellation",
+    ):
+        result = cancellation_agent.invoke(
+            {
+                "messages": state["messages"],
+            }
+        )
 
     proposal = _extract_tool_proposal(
         result["messages"],
@@ -354,9 +374,12 @@ def _pending_action_description(
 def confirmation_node(
     state: SupportState,
 ) -> dict:
-    decision = classify_confirmation(
-        state
-    )
+    with observe_operation(
+        "confirmation",
+    ):
+        decision = classify_confirmation(
+            state
+        )
 
     if decision == "reject":
         return {
@@ -439,14 +462,19 @@ def action_executor_node(
             "route": "confirmation",
         }
 
-    result = execute_pending_action(
-        action=action,
-        customer_id=state["customer_id"],
+    action_type = action.get(
+        "action_type",
+        "unknown",
     )
 
-    action_type = action.get(
-        "action_type"
-    )
+    with observe_operation(
+        "action",
+        action_type=action_type,
+    ):
+        result = execute_pending_action(
+            action=action,
+            customer_id=state["customer_id"],
+        )
 
     # -----------------------------------------------------------------
     # FAILURE
@@ -536,7 +564,6 @@ def action_executor_node(
         "confirmation_decision": None,
         "route": "confirmation",
     }
-
 
 # =====================================================================
 # SUPERVISOR ROUTING
