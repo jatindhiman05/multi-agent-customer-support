@@ -10,6 +10,7 @@ Route = Literal[
     "knowledge",
     "returns",
     "cancellation",
+    "escalation",
     "confirmation",
 ]
 
@@ -20,7 +21,10 @@ ActionType = Literal[
 ]
 
 
-class PendingAction(TypedDict, total=False):
+class PendingAction(
+    TypedDict,
+    total=False,
+):
     action_type: ActionType
 
     # Shared
@@ -33,8 +37,14 @@ class PendingAction(TypedDict, total=False):
     reason: str
 
 
-class SupportState(TypedDict, total=False):
-    messages: Annotated[list[BaseMessage], add_messages]
+class SupportState(
+    TypedDict,
+    total=False,
+):
+    messages: Annotated[
+        list[BaseMessage],
+        add_messages,
+    ]
 
     route: Route | None
 
@@ -47,5 +57,5 @@ class SupportState(TypedDict, total=False):
         "unclear",
     ] | None
 
-    # Controlled mutation state.
+    # Controlled destructive/mutating action state.
     pending_action: PendingAction | None

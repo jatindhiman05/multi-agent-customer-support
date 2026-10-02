@@ -16,6 +16,7 @@ class RouteDecision(BaseModel):
         "knowledge",
         "returns",
         "cancellation",
+        "escalation",
     ] = Field(
         description=(
             "The specialist agent that should handle the request."
@@ -53,7 +54,6 @@ Use for customer-specific order and shipment questions:
 2. returns
 
 Use for customer-specific return operations:
-- "Can I return ORD-1001?"
 - checking whether an item can be returned
 - starting or discussing a return for a specific order
 - checking an existing return status
@@ -62,41 +62,65 @@ Use for customer-specific return operations:
 3. cancellation
 
 Use for customer-specific order cancellation requests:
-- "Cancel ORD-1002"
-- "Can I cancel ORD-1002?"
-- "I don't want my order anymore"
-- checking whether a specific order can still be cancelled
+- cancelling an order
+- checking whether an order can still be cancelled
+- stopping an order before shipment
 
-Use cancellation when the customer wants to stop or cancel an
-existing order.
+4. escalation
 
-4. knowledge
+Use when:
+- the customer explicitly asks for a human
+- the customer asks for a support agent
+- the customer explicitly asks to escalate an issue
+- the customer says the issue remains unresolved and wants human
+  review
+- the customer describes a safety concern requiring human review
+- the customer describes a legal concern requiring human review
+
+Examples:
+"I want to talk to a human."
+-> escalation
+
+"Please escalate this."
+-> escalation
+
+"I need a support agent to investigate ORD-1003."
+-> escalation
+
+"I have a safety concern about this product."
+-> escalation
+
+5. knowledge
 
 Use for general VoltNest policy or informational questions:
-- "What is your return policy?"
+- return policy
 - warranty policy
 - shipping policy
 - general company information
 
 Important distinctions:
 
-General policy:
 "What is your return policy?"
 -> knowledge
 
-Customer-specific return:
 "Can I return ORD-1001?"
 -> returns
 
-Customer-specific cancellation:
 "Can I cancel ORD-1002?"
 -> cancellation
 
-Tracking:
 "Where is ORD-1003?"
 -> order
 
+"I want a human to investigate ORD-1003."
+-> escalation
+
+If the customer explicitly requests a human or escalation, prefer
+escalation even if the issue also involves an order, return,
+cancellation, payment, or delivery.
+
 Do not answer the customer's question yourself.
+
 Return only the route using the provided structured output.
 """
 

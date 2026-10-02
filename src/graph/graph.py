@@ -6,6 +6,9 @@ from langchain_core.messages import (
     AIMessage,
     ToolMessage,
 )
+from src.agents.escalation_agent import (
+    create_escalation_agent,
+)
 from langgraph.graph import (
     END,
     START,
@@ -114,6 +117,29 @@ def knowledge_node(
     state: SupportState,
 ) -> dict:
     result = knowledge_agent.invoke(
+        {
+            "messages": state["messages"],
+        }
+    )
+
+    return {
+        "messages": [
+            result["messages"][-1]
+        ],
+    }
+
+def escalation_node(
+    state: SupportState,
+) -> dict:
+    escalation_agent = (
+        create_escalation_agent(
+            customer_id=state[
+                "customer_id"
+            ]
+        )
+    )
+
+    result = escalation_agent.invoke(
         {
             "messages": state["messages"],
         }
@@ -568,6 +594,11 @@ def build_support_graph():
         action_executor_node,
     )
 
+    graph.add_node(
+        "escalation_agent",
+        escalation_node,
+    )
+
     # -------------------------------------------------------------
     # ENTRY
     # -------------------------------------------------------------
@@ -593,6 +624,7 @@ def build_support_graph():
             "knowledge": "knowledge_agent",
             "returns": "return_agent",
             "cancellation": "cancellation_agent",
+            "escalation": "escalation_agent",
         },
     )
 
@@ -635,6 +667,11 @@ def build_support_graph():
 
     graph.add_edge(
         "action_executor",
+        END,
+    )
+
+    graph.add_edge(
+        "escalation_agent",
         END,
     )
 
