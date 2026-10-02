@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: voltnest-postgres-compose
+    environment:
+      POSTGRES_DB: voltnest
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - voltnest_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d voltnest"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voltnest-backend-compose
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/voltnest
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  voltnest_postgres_data:

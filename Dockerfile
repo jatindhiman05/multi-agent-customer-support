@@ -16,11 +16,13 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application and deployment files.
 COPY alembic ./alembic
 COPY alembic.ini .
 COPY src ./src
 COPY scripts ./scripts
 COPY data ./data
+COPY knowledge ./knowledge
 
 # Run the application as an unprivileged user.
 RUN useradd --create-home --uid 10001 appuser \
