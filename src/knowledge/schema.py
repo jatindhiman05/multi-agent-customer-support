@@ -117,3 +117,33 @@ class KnowledgeSearchResult(BaseModel):
 
     chunk: KnowledgeChunk
     score: float
+
+class KnowledgeEvidence(BaseModel):
+    """
+    Authoritative evidence exposed by the knowledge subsystem.
+
+    Agents consume evidence rather than vector-store-specific
+    search results.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
+    chunk_id: str
+    document_id: str
+
+    title: str
+    heading: str
+
+    content: str
+    score: float
+
+    category: str
+    topic: str
+
+    version: str
+    effective_date: date
+
+    source_path: str
