@@ -15,6 +15,7 @@ from src.db.models.support_ticket import SupportTicket
 from src.db.models.tracking_event import TrackingEvent
 from src.db.models.user import User
 from src.db.models.conversation_message import ConversationMessage
+from src.db.models.knowledge_chunk import KnowledgeChunkRecord
 
 __all__ = [
     "User",
@@ -34,4 +35,5 @@ __all__ = [
     "Conversation",
     "IdempotencyRecord",
     "ConversationMessage",
+    "KnowledgeChunkRecord",
 ]
