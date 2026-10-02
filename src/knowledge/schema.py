@@ -104,3 +104,16 @@ class KnowledgeChunk(BaseModel):
             "content_hash": self.content_hash,
             "source": self.source_path.as_posix(),
         }
+
+class KnowledgeSearchResult(BaseModel):
+    """
+    One ranked result returned from semantic knowledge search.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
+    chunk: KnowledgeChunk
+    score: float

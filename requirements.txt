@@ -11,3 +11,5 @@ faiss-cpu
 langgraph-checkpoint-postgres
 PyJWT
 pwdlib[argon2]
+langchain-groq
+PyYAML
