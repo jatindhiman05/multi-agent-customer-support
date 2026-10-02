@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from sqlalchemy import select,text
-
+from sqlalchemy import select, text
+import hashlib
+import json
 from src.core.security import (
     create_access_token,
     verify_password,
@@ -48,6 +49,12 @@ from src.core.context import (
     reset_request_id,
     set_conversation_id,
     set_request_id,
+)
+from sqlalchemy.exc import IntegrityError
+
+from src.db.models import ChatRequestRecord
+from src.repositories.chat_request_repository import (
+    ChatRequestRepository,
 )
 from src.core.logging import (
     configure_logging,
@@ -554,6 +561,49 @@ def get_order_details(
             ],
         )
 
+def _chat_request_hash(
+    *,
+    message: str,
+    conversation_id: uuid.UUID | None,
+) -> str:
+    payload = {
+        "message": message,
+        "conversation_id": (
+            str(conversation_id)
+            if conversation_id is not None
+            else None
+        ),
+    }
+
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+    return hashlib.sha256(
+        canonical.encode("utf-8")
+    ).hexdigest()
+
+
+def _chat_response_from_record(
+    record: ChatRequestRecord,
+) -> ChatResponse:
+    if (
+        record.conversation_id is None
+        or record.response_content is None
+        or record.route is None
+    ):
+        raise RuntimeError(
+            "Completed chat request has incomplete result."
+        )
+
+    return ChatResponse(
+        response=record.response_content,
+        route=record.route,
+        conversation_id=record.conversation_id,
+        ui=record.ui_payload,
+    )
 # ============================================================
 # CHAT
 # ============================================================
@@ -577,6 +627,99 @@ def chat(
     customer_uuid = uuid.UUID(
         customer_id
     )
+
+    request_hash = _chat_request_hash(
+        message=request.message,
+        conversation_id=request.conversation_id,
+    )
+
+    # --------------------------------------------------------
+    # REQUEST IDEMPOTENCY
+    # --------------------------------------------------------
+
+    with SessionLocal() as session:
+        repository = ChatRequestRepository(
+            session
+        )
+
+        existing = repository.get(
+            customer_id=customer_uuid,
+            request_id=request.request_id,
+        )
+
+        if existing is not None:
+            if existing.request_hash != request_hash:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "This request ID has already been used "
+                        "for a different chat request."
+                    ),
+                )
+
+            if existing.status == "completed":
+                logger.info(
+                    "chat.idempotent_replay",
+                    extra={
+                        "chat_request_id": str(
+                            request.request_id
+                        ),
+                    },
+                )
+
+                return _chat_response_from_record(
+                    existing
+                )
+
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This chat request is already being processed."
+                ),
+            )
+
+        record = ChatRequestRecord(
+            customer_id=customer_uuid,
+            request_id=request.request_id,
+            request_hash=request_hash,
+            status="processing",
+        )
+
+        repository.add(record)
+
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+
+            existing = repository.get(
+                customer_id=customer_uuid,
+                request_id=request.request_id,
+            )
+
+            if existing is None:
+                raise
+
+            if existing.request_hash != request_hash:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "This request ID has already been used "
+                        "for a different chat request."
+                    ),
+                )
+
+            if existing.status == "completed":
+                return _chat_response_from_record(
+                    existing
+                )
+
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This chat request is already being processed."
+                ),
+            )
 
     logger.info(
         "chat.started"
@@ -688,6 +831,30 @@ def chat(
                 ui_payload=ui_payload,
             )
 
+            request_repository = (
+                ChatRequestRepository(session)
+            )
+
+            request_record = request_repository.get(
+                customer_id=customer_uuid,
+                request_id=request.request_id,
+            )
+
+            if request_record is None:
+                raise RuntimeError(
+                    "Chat request idempotency record disappeared."
+                )
+
+            request_record.status = "completed"
+            request_record.conversation_id = (
+                conversation_id
+            )
+            request_record.response_content = (
+                response_content
+            )
+            request_record.route = route
+            request_record.ui_payload = ui_payload
+
             session.commit()
 
         duration_ms = (
@@ -717,6 +884,28 @@ def chat(
         logger.exception(
             "chat.failed"
         )
+
+        with SessionLocal() as session:
+            repository = ChatRequestRepository(
+                session
+            )
+
+            record = repository.get(
+                customer_id=customer_uuid,
+                request_id=request.request_id,
+            )
+
+            if (
+                record is not None
+                and record.status == "processing"
+            ):
+                repository.delete(
+                    customer_id=customer_uuid,
+                    request_id=request.request_id,
+                )
+
+                session.commit()
+
         raise
 
     finally:

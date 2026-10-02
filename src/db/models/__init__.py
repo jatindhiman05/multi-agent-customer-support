@@ -16,7 +16,7 @@ from src.db.models.tracking_event import TrackingEvent
 from src.db.models.user import User
 from src.db.models.conversation_message import ConversationMessage
 from src.db.models.knowledge_chunk import KnowledgeChunkRecord
-
+from src.db.models.chat_request_record import ChatRequestRecord
 __all__ = [
     "User",
     "Address",
@@ -36,4 +36,5 @@ __all__ = [
     "IdempotencyRecord",
     "ConversationMessage",
     "KnowledgeChunkRecord",
+    "ChatRequestRecord",
 ]

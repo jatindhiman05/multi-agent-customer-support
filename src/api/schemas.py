@@ -138,3 +138,13 @@ class ConversationHistoryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     messages: list[ConversationMessageResponse]
+
+class ChatRequest(BaseModel):
+    request_id: uuid.UUID
+
+    message: str = Field(
+        min_length=1,
+        max_length=4000,
+    )
+
+    conversation_id: uuid.UUID | None = None

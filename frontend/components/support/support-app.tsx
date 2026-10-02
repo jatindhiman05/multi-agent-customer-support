@@ -222,6 +222,8 @@ export function SupportApp({
 
     if (!message || isSending || isLoadingConversation) return;
 
+    const requestId = crypto.randomUUID();
+    
     const currentConversationId = conversationId;
     const userMessage: SupportMessage = {
       id: crypto.randomUUID(),
@@ -238,10 +240,11 @@ export function SupportApp({
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message,
-          conversation_id: currentConversationId,
-        }),
+      body: JSON.stringify({
+        request_id: requestId,
+        message,
+        conversation_id: currentConversationId,
+      }),
       });
       const data = await readJson(response);
 

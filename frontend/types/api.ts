@@ -106,10 +106,11 @@ export type SupportUI =
     };
 
 
-export interface ChatRequest {
+export type ChatRequest = {
+  request_id: string;
   message: string;
-  conversation_id?: string | null;
-}
+  conversation_id: string | null;
+};
 
 
 export interface ChatResponse {
