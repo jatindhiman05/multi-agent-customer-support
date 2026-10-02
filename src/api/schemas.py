@@ -101,3 +101,26 @@ class OrderDetailResponse(BaseModel):
     items: list[OrderItemResponse]
     payments: list[PaymentResponse]
     shipments: list[ShipmentResponse]
+
+
+class ConversationSummaryResponse(BaseModel):
+    id: uuid.UUID
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConversationMessageResponse(BaseModel):
+    id: uuid.UUID
+    role: str
+    content: str
+    route: str | None
+    created_at: datetime
+
+
+class ConversationHistoryResponse(BaseModel):
+    id: uuid.UUID
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+    messages: list[ConversationMessageResponse]

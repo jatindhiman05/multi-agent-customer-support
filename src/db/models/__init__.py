@@ -14,7 +14,7 @@ from src.db.models.shipment_item import ShipmentItem
 from src.db.models.support_ticket import SupportTicket
 from src.db.models.tracking_event import TrackingEvent
 from src.db.models.user import User
-
+from src.db.models.conversation_message import ConversationMessage
 
 __all__ = [
     "User",
@@ -33,4 +33,5 @@ __all__ = [
     "SupportTicket",
     "Conversation",
     "IdempotencyRecord",
+    "ConversationMessage",
 ]

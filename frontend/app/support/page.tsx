@@ -1,34 +1,50 @@
 import { redirect } from "next/navigation";
 
-import { LogoutButton } from "@/components/auth/logout-button";
+import { SupportApp } from "@/components/support/support-app";
 import { getCurrentUser } from "@/lib/auth/get-current-user";
+import { getSupportInitialData } from "@/lib/support/get-support-data";
 
-export default async function SupportPage() {
+export default async function SupportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    conversation?: string;
+  }>;
+}) {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
   }
 
+  const params = await searchParams;
+
+  const conversationId =
+    params.conversation ?? null;
+
+  const {
+    conversations,
+    history,
+  } = await getSupportInitialData(
+    conversationId,
+  );
+
+  /*
+   * A conversation was explicitly requested but could
+   * not be loaded. This covers stale/deleted IDs and
+   * conversations that do not belong to this customer.
+   *
+   * FastAPI remains the authorization boundary.
+   */
+  if (conversationId && !history) {
+    redirect("/support");
+  }
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-lg rounded-xl border bg-background p-8 text-center shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          VoltNest Support
-        </h1>
-
-        <p className="mt-3 text-muted-foreground">
-          Welcome, {user.first_name}.
-        </p>
-
-        <p className="mt-1 text-sm text-muted-foreground">
-          {user.email}
-        </p>
-
-        <div className="mt-6">
-          <LogoutButton />
-        </div>
-      </div>
-    </main>
+    <SupportApp
+      user={user}
+      initialConversations={conversations}
+      initialHistory={history}
+    />
   );
 }

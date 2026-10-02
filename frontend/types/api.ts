@@ -86,3 +86,26 @@ export interface OrderDetail {
   payments: OrderPayment[];
   shipments: OrderShipment[];
 }
+
+export interface ConversationSummary {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  route: SupportRoute | null;
+  created_at: string;
+}
+
+export interface ConversationHistory {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  messages: ConversationMessage[];
+}

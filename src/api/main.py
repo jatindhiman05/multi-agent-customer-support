@@ -38,6 +38,9 @@ from src.api.schemas import (
     CurrentUserResponse,
     LoginRequest,
     TokenResponse,
+    ConversationHistoryResponse,
+    ConversationMessageResponse,
+    ConversationSummaryResponse,
 )
 from src.core.context import (
     get_request_id,
@@ -579,6 +582,10 @@ def chat(
         "chat.started"
     )
 
+    # --------------------------------------------------------
+    # Persist the customer's message first.
+    # --------------------------------------------------------
+
     with SessionLocal() as session:
         service = ConversationService(
             session
@@ -587,9 +594,8 @@ def chat(
         if request.conversation_id is None:
             conversation = service.create(
                 customer_id=customer_uuid,
+                first_message=request.message,
             )
-
-            session.commit()
 
             logger.info(
                 "conversation.created",
@@ -610,7 +616,15 @@ def chat(
                 )
             )
 
-    conversation_id = conversation.id
+        service.add_message(
+            conversation=conversation,
+            role="user",
+            content=request.message,
+        )
+
+        session.commit()
+
+        conversation_id = conversation.id
 
     conversation_token = (
         set_conversation_id(
@@ -643,6 +657,37 @@ def chat(
 
         route = result["route"]
 
+        response_content = (
+            result["messages"][-1].content
+        )
+
+        # ----------------------------------------------------
+        # Persist successful assistant response.
+        # ----------------------------------------------------
+
+        with SessionLocal() as session:
+            service = ConversationService(
+                session
+            )
+
+            conversation = (
+                service.get_for_customer(
+                    conversation_id=(
+                        conversation_id
+                    ),
+                    customer_id=customer_uuid,
+                )
+            )
+
+            service.add_message(
+                conversation=conversation,
+                role="assistant",
+                content=response_content,
+                route=route,
+            )
+
+            session.commit()
+
         duration_ms = (
             time.perf_counter()
             - start_time
@@ -660,9 +705,7 @@ def chat(
         )
 
         return ChatResponse(
-            response=(
-                result["messages"][-1].content
-            ),
+            response=response_content,
             route=route,
             conversation_id=(
                 conversation_id
@@ -678,4 +721,75 @@ def chat(
     finally:
         reset_conversation_id(
             conversation_token
+        )
+
+# ============================================================
+# CONVERSATIONS
+# ============================================================
+
+
+@app.get(
+    "/conversations",
+    response_model=list[ConversationSummaryResponse],
+)
+def list_conversations(
+    customer_id: str = Depends(
+        get_current_customer_id
+    ),
+):
+    customer_uuid = uuid.UUID(customer_id)
+
+    with SessionLocal() as session:
+        service = ConversationService(session)
+
+        conversations = service.list_for_customer(
+            customer_id=customer_uuid,
+        )
+
+        return [
+            ConversationSummaryResponse(
+                id=conversation.id,
+                title=conversation.title,
+                created_at=conversation.created_at,
+                updated_at=conversation.updated_at,
+            )
+            for conversation in conversations
+        ]
+
+
+@app.get(
+    "/conversations/{conversation_id}/messages",
+    response_model=ConversationHistoryResponse,
+)
+def get_conversation_messages(
+    conversation_id: uuid.UUID,
+    customer_id: str = Depends(
+        get_current_customer_id
+    ),
+):
+    customer_uuid = uuid.UUID(customer_id)
+
+    with SessionLocal() as session:
+        service = ConversationService(session)
+
+        conversation = service.get_with_messages(
+            conversation_id=conversation_id,
+            customer_id=customer_uuid,
+        )
+
+        return ConversationHistoryResponse(
+            id=conversation.id,
+            title=conversation.title,
+            created_at=conversation.created_at,
+            updated_at=conversation.updated_at,
+            messages=[
+                ConversationMessageResponse(
+                    id=message.id,
+                    role=message.role,
+                    content=message.content,
+                    route=message.route,
+                    created_at=message.created_at,
+                )
+                for message in conversation.messages
+            ],
         )
