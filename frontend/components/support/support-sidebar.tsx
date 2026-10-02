@@ -70,7 +70,7 @@ export function SupportSidebar({
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 px-3">
+      <nav className="min-h-0 flex-1 px-3" aria-label="Support conversations">
         <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Conversations
         </p>
@@ -95,7 +95,7 @@ export function SupportSidebar({
                     onClick={() => onSelectConversation(conversation.id)}
                     disabled={busy}
                     aria-current={active ? "page" : undefined}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       active
                         ? "bg-muted font-medium"
                         : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -111,7 +111,7 @@ export function SupportSidebar({
             </div>
           )}
         </div>
-      </div>
+      </nav>
 
       <div className="border-t p-4">
         <div className="mb-3 flex items-center gap-3">

@@ -2,27 +2,7 @@ import { LifeBuoy } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import { SupportUIRenderer } from "@/components/support/support-ui";
-import type { SupportRoute } from "@/types/api";
 import type { SupportMessage } from "@/components/support/support-types";
-
-function routeLabel(route?: SupportRoute) {
-  switch (route) {
-    case "order":
-      return "Order support";
-    case "knowledge":
-      return "Knowledge";
-    case "returns":
-      return "Returns";
-    case "cancellation":
-      return "Cancellation";
-    case "escalation":
-      return "Human support";
-    case "confirmation":
-      return "Confirmation required";
-    default:
-      return null;
-  }
-}
 
 export function SupportMessageItem({
   message,
@@ -37,10 +17,9 @@ export function SupportMessageItem({
   onConfirm: () => void;
   onDecline: () => void;
 }) {
-  const label = routeLabel(message.route);
-
   return (
-    <div
+    <article
+      aria-label={message.role === "assistant" ? "VoltNest Support message" : "Your message"}
       className={
         message.role === "user"
           ? "ml-auto max-w-[85%] md:max-w-[72%]"
@@ -54,7 +33,6 @@ export function SupportMessageItem({
               <LifeBuoy className="size-3.5" />
             </div>
             <span className="font-medium text-foreground">VoltNest Support</span>
-            {label && <span> · {label}</span>}
           </>
         ) : (
           <span className="ml-auto font-medium text-foreground">You</span>
@@ -105,7 +83,7 @@ export function SupportMessageItem({
           />
         )}
       </div>
-    </div>
+    </article>
   );
 }
 

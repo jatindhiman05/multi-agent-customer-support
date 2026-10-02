@@ -76,6 +76,7 @@ export function SupportApp({
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [error, setError] = useState<SupportError | null>(null);
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -202,6 +203,7 @@ export function SupportApp({
     setConversationId(null);
     setInput("");
     setError(null);
+    setIsMobileNavigationOpen(false);
     router.replace("/support", { scroll: false });
   }
 
@@ -308,6 +310,7 @@ export function SupportApp({
     isSending,
     onNewConversation: newConversation,
     onSelectConversation: (selectedConversationId: string) => {
+      setIsMobileNavigationOpen(false);
       void loadConversation(selectedConversationId);
     },
   };
@@ -321,7 +324,10 @@ export function SupportApp({
       <div className="flex h-full flex-col lg:pl-72">
         <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 px-4 md:px-6">
           <div className="flex items-center gap-3">
-            <Sheet>
+            <Sheet
+              open={isMobileNavigationOpen}
+              onOpenChange={setIsMobileNavigationOpen}
+            >
               <SheetTrigger
                 render={
                   <Button
@@ -361,7 +367,10 @@ export function SupportApp({
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main
+          className="min-h-0 flex-1 overflow-y-auto"
+          aria-label="Support conversation"
+        >
           <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col px-4 md:px-8">
             {isLoadingConversation ? (
               <div className="flex flex-1 items-center justify-center">
