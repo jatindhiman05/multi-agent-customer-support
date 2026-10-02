@@ -1,0 +1,132 @@
+import Link from "next/link";
+import {
+  LifeBuoy,
+  Loader2,
+  MessageSquareText,
+  PackageSearch,
+  Plus,
+} from "lucide-react";
+
+import { LogoutButton } from "@/components/auth/logout-button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import type { CurrentUser } from "@/lib/auth/get-current-user";
+import type { ConversationSummary } from "@/types/api";
+
+function initials(user: CurrentUser) {
+  return `${user.first_name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase();
+}
+
+export function SupportSidebar({
+  user,
+  conversations,
+  activeConversationId,
+  isLoadingConversations,
+  isLoadingConversation,
+  isSending,
+  onNewConversation,
+  onSelectConversation,
+}: {
+  user: CurrentUser;
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
+  isLoadingConversations: boolean;
+  isLoadingConversation: boolean;
+  isSending: boolean;
+  onNewConversation: () => void;
+  onSelectConversation: (conversationId: string) => void;
+}) {
+  const busy = isLoadingConversation || isSending;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center gap-3 border-b px-5">
+        <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <LifeBuoy className="size-5" />
+        </div>
+        <div>
+          <p className="font-semibold tracking-tight">VoltNest</p>
+          <p className="text-xs text-muted-foreground">Customer Support</p>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <Button
+          className="w-full justify-start"
+          onClick={onNewConversation}
+          disabled={busy}
+        >
+          <Plus className="size-4" />
+          New conversation
+        </Button>
+
+        <Button
+          variant="ghost"
+          className="mt-2 w-full justify-start"
+          render={<Link href="/orders" />}
+        >
+          <PackageSearch className="size-4" />
+          My orders
+        </Button>
+      </div>
+
+      <div className="min-h-0 flex-1 px-3">
+        <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Conversations
+        </p>
+        <div className="h-full overflow-y-auto pb-4">
+          {isLoadingConversations ? (
+            <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading conversations...
+            </div>
+          ) : conversations.length === 0 ? (
+            <p className="px-2 py-3 text-sm leading-6 text-muted-foreground">
+              Your support conversations will appear here.
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {conversations.map((conversation) => {
+                const active = conversation.id === activeConversationId;
+                return (
+                  <button
+                    key={conversation.id}
+                    type="button"
+                    onClick={() => onSelectConversation(conversation.id)}
+                    disabled={busy}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      active
+                        ? "bg-muted font-medium"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquareText className="size-4 shrink-0" />
+                    <span className="truncate">
+                      {conversation.title ?? "Support conversation"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t p-4">
+        <div className="mb-3 flex items-center gap-3">
+          <Avatar>
+            <AvatarFallback>{initials(user)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {user.first_name} {user.last_name}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          </div>
+        </div>
+        <LogoutButton />
+      </div>
+    </div>
+  );
+}
