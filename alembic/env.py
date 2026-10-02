@@ -20,6 +20,41 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+# =============================================================================
+# EXTERNAL TABLES
+# =============================================================================
+
+# These tables are owned and managed by LangGraph's PostgresSaver.
+# Alembic must not create, modify, or delete them.
+LANGGRAPH_TABLES = {
+    "checkpoints",
+    "checkpoint_blobs",
+    "checkpoint_writes",
+    "checkpoint_migrations",
+}
+
+
+def include_object(
+    object,
+    name,
+    type_,
+    reflected,
+    compare_to,
+):
+    """
+    Prevent Alembic autogenerate from managing LangGraph-owned tables.
+    """
+
+    if (
+        type_ == "table"
+        and reflected
+        and name in LANGGRAPH_TABLES
+    ):
+        return False
+
+    return True
+
+
 def run_migrations_offline() -> None:
     """
     Run migrations without creating a live database connection.
@@ -33,6 +68,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -46,7 +82,9 @@ def run_migrations_online() -> None:
 
     from src.db.connection import DATABASE_URL
 
-    configuration = config.get_section(config.config_ini_section) or {}
+    configuration = config.get_section(
+        config.config_ini_section
+    ) or {}
 
     configuration["sqlalchemy.url"] = DATABASE_URL
 
@@ -61,6 +99,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from src.models.conversation import Conversation
+from src.db.models.conversation import Conversation
 
 
 class ConversationNotFoundError(Exception):

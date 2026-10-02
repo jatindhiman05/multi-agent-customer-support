@@ -12,7 +12,7 @@ from src.db.models.support_ticket import SupportTicket
 from src.db.models.refund import Refund
 from src.db.models.return_item import ReturnItem
 from src.db.models.return_request import ReturnRequest
-
+from src.db.models.conversation import Conversation
 __all__ = [
     "User",
     "Address",
