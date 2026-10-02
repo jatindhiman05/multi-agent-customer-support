@@ -4,6 +4,7 @@ import {
   ArrowRight,
   LifeBuoy,
   Package,
+  User
 } from "lucide-react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -127,6 +128,13 @@ export default async function OrdersPage() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              render={<Link href="/account" />}
+            >
+              <User className="size-4" />
+              Account
+            </Button>
             <Button
               variant="ghost"
               render={

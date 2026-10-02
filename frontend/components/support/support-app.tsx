@@ -2,8 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Menu } from "lucide-react";
-
+import {
+  Loader2,
+  Menu,
+  User,
+} from "lucide-react";
+import Link from "next/link";
 import { SupportComposer } from "@/components/support/support-composer";
 import { SupportEmptyState } from "@/components/support/support-empty-state";
 import {
@@ -368,9 +372,24 @@ export function SupportApp({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="hidden sm:inline">Signed in as</span>
-            <span className="font-medium text-foreground">{user.first_name}</span>
+          <div className="flex items-center gap-2">
+            <span className="hidden text-sm text-muted-foreground md:inline">
+              Signed in as{" "}
+              <span className="font-medium text-foreground">
+                {user.first_name}
+              </span>
+            </span>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              render={<Link href="/account" />}
+            >
+              <User className="size-4" />
+              <span className="hidden sm:inline">
+                Account
+              </span>
+            </Button>
           </div>
         </header>
 

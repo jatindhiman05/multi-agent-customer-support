@@ -7,6 +7,7 @@ import {
   MapPin,
   Package,
   Truck,
+  User,
 } from "lucide-react";
 import {
   notFound,
@@ -133,7 +134,13 @@ export default async function OrderPage({
               VoltNest
             </span>
           </Link>
-
+          <Button
+            variant="ghost"
+            render={<Link href="/account" />}
+          >
+            <User className="size-4" />
+            Account
+          </Button>
           <Button
             variant="ghost"
             render={
