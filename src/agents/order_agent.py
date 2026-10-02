@@ -1,8 +1,6 @@
-from src.core.config import GROQ_API_KEY
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
-
+from src.core.llm import create_chat_groq
 from src.tools.order_tools import get_order_tracking
 
 
@@ -24,11 +22,7 @@ Rules:
 """
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
-)
-
+llm = create_chat_groq()
 
 def create_order_agent(customer_id: str):
 

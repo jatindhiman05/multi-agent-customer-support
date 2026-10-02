@@ -9,6 +9,14 @@ from src.core.security import (
     create_access_token,
     verify_password,
 )
+from src.core.config import (
+    CHAT_RATE_LIMIT_PER_MINUTE,
+    LOGIN_RATE_LIMIT_PER_MINUTE,
+)
+from src.core.rate_limit import (
+    InMemoryRateLimiter,
+    get_client_ip,
+)
 from src.db.models import User
 from fastapi import (
     Depends,
@@ -19,7 +27,8 @@ from fastapi import (
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage
-
+from fastapi.middleware.cors import CORSMiddleware
+from src.core.config import ALLOWED_ORIGINS
 from src.api.dependencies import (
     get_current_customer_id,
 )
@@ -59,7 +68,13 @@ configure_logging(
 
 logger = get_logger(__name__)
 
+login_rate_limiter = InMemoryRateLimiter(
+    requests=LOGIN_RATE_LIMIT_PER_MINUTE,
+)
 
+chat_rate_limiter = InMemoryRateLimiter(
+    requests=CHAT_RATE_LIMIT_PER_MINUTE,
+)
 # ============================================================
 # APPLICATION
 # ============================================================
@@ -69,7 +84,20 @@ app = FastAPI(
     version="0.1.0",
 )
 
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=[
+        "GET",
+        "POST",
+    ],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Request-ID",
+    ],
+)
 # ============================================================
 # REQUEST CONTEXT / LOGGING MIDDLEWARE
 # ============================================================
@@ -302,7 +330,11 @@ def health():
 )
 def login(
     request: LoginRequest,
+    http_request: Request,
 ):
+    login_rate_limiter.check(
+        key=get_client_ip(http_request),
+    )
     with SessionLocal() as session:
         user = session.scalar(
             select(User).where(
@@ -364,6 +396,10 @@ def chat(
         get_current_customer_id
     ),
 ):
+    chat_rate_limiter.check(
+        key=customer_id,
+    )
+
     start_time = time.perf_counter()
 
     customer_uuid = uuid.UUID(

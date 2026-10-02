@@ -1,13 +1,11 @@
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
-from src.core.config import GROQ_API_KEY
 from src.tools.return_tools import (
     check_return_eligibility,
     get_return_status,
     get_returnable_order_items,
 )
-
+from src.core.llm import create_chat_groq
 
 
 
@@ -68,10 +66,7 @@ Keep responses concise.
 """
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
-)
+llm = create_chat_groq()
 
 
 def create_return_agent(customer_id: str):

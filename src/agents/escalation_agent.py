@@ -1,11 +1,9 @@
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
-from src.core.config import GROQ_API_KEY
 from src.tools.escalation_tools import (
     create_support_ticket,
 )
-
+from src.core.llm import create_chat_groq
 
 
 
@@ -88,10 +86,7 @@ Keep responses concise and professional.
 """
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
-)
+llm = create_chat_groq()
 
 
 def create_escalation_agent(

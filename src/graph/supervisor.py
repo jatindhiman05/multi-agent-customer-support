@@ -1,8 +1,6 @@
 from typing import Literal
-
-from langchain_groq import ChatGroq
+from src.core.llm import create_chat_groq
 from pydantic import BaseModel, Field
-from src.core.config import GROQ_API_KEY
 from src.core.logging import get_logger
 from src.core.observability import observe_operation
 from src.graph.state import SupportState
@@ -25,10 +23,7 @@ class RouteDecision(BaseModel):
     )
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
-)
+llm = create_chat_groq()
 
 router_llm = llm.with_structured_output(
     RouteDecision

@@ -1,6 +1,5 @@
-from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
-
+from src.core.llm import create_chat_groq
 from src.tools.knowledge_tools import search_knowledge_base
 
 
@@ -21,10 +20,7 @@ Rules:
 """
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
-)
+llm = create_chat_groq()
 
 
 knowledge_agent = create_react_agent(

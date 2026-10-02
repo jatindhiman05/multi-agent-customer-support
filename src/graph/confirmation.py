@@ -1,6 +1,5 @@
 from typing import Literal
-
-from langchain_groq import ChatGroq
+from src.core.llm import create_chat_groq
 from pydantic import BaseModel, Field
 
 from src.graph.state import SupportState
@@ -19,10 +18,7 @@ class ConfirmationDecision(BaseModel):
     )
 
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0,
-)
+llm = create_chat_groq()
 
 confirmation_llm = llm.with_structured_output(
     ConfirmationDecision
