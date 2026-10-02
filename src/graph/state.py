@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from langchain_core.messages import AIMessage, ToolMessage,BaseMessage
+from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
@@ -9,17 +9,24 @@ Route = Literal[
     "order",
     "knowledge",
     "returns",
+    "cancellation",
     "confirmation",
 ]
 
+
 ActionType = Literal[
     "create_return",
+    "cancel_order",
 ]
 
 
-class PendingAction(TypedDict):
+class PendingAction(TypedDict, total=False):
     action_type: ActionType
+
+    # Shared
     order_number: str
+
+    # Return-specific
     order_item_id: str
     product_name: str
     quantity: int

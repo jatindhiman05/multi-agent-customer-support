@@ -65,20 +65,16 @@ class OrderService:
 
         return order
 
-    def check_cancellation_eligibility(
+    def _check_order_cancellation_eligibility(
         self,
-        *,
-        order_number: str,
-        customer_id: uuid.UUID,
+        order: Order,
     ) -> CancellationEligibility:
-        order = self.get_order(
-            order_number=order_number,
-            customer_id=customer_id,
-        )
+        """
+        Apply cancellation rules to an already-loaded order.
 
-        # ---------------------------------------------------------
-        # ORDER-LEVEL CHECKS
-        # ---------------------------------------------------------
+        This helper allows the same business rules to be reused by both
+        the read-only eligibility path and the locked mutation path.
+        """
 
         if order.status == "cancelled":
             return CancellationEligibility(
@@ -98,22 +94,14 @@ class OrderService:
                 reason="already_shipped",
             )
 
-        # ---------------------------------------------------------
-        # FULFILLMENT CHECKS
-        # ---------------------------------------------------------
-
-        # Even if the order status has not yet been updated,
-        # an actual dispatched shipment blocks cancellation.
+        # Even if order.status has not yet been updated, an actual
+        # dispatched shipment blocks cancellation.
         for shipment in order.shipments:
             if shipment.status in self.BLOCKING_SHIPMENT_STATUSES:
                 return CancellationEligibility(
                     allowed=False,
                     reason="shipment_already_dispatched",
                 )
-
-        # ---------------------------------------------------------
-        # STATUS POLICY
-        # ---------------------------------------------------------
 
         if order.status not in self.CANCELLABLE_STATUSES:
             return CancellationEligibility(
@@ -126,28 +114,61 @@ class OrderService:
             reason="eligible",
         )
 
-    def cancel_order(
+    def check_cancellation_eligibility(
         self,
         *,
         order_number: str,
         customer_id: uuid.UUID,
-    ) -> CancellationResult:
-        # ---------------------------------------------------------
-        # LOAD CUSTOMER-OWNED ORDER
-        # ---------------------------------------------------------
+    ) -> CancellationEligibility:
+        """
+        Read-only cancellation eligibility check.
+        """
 
         order = self.get_order(
             order_number=order_number,
             customer_id=customer_id,
         )
 
+        return self._check_order_cancellation_eligibility(
+            order
+        )
+
+    def cancel_order(
+        self,
+        *,
+        order_number: str,
+        customer_id: uuid.UUID,
+    ) -> CancellationResult:
+        """
+        Cancel an order while holding an order-level row lock.
+
+        If a refundable captured payment exists, the full remaining
+        refundable balance is refunded inside the same SQLAlchemy
+        transaction.
+
+        The caller owns commit/rollback.
+        """
+
         # ---------------------------------------------------------
-        # RE-CHECK BUSINESS ELIGIBILITY
+        # LOCK CUSTOMER-OWNED ORDER
         # ---------------------------------------------------------
 
-        eligibility = self.check_cancellation_eligibility(
+        order = self.orders.get_for_customer_for_update(
             order_number=order_number,
-            customer_id=customer_id,
+            user_id=customer_id,
+        )
+
+        if order is None:
+            raise OrderNotFoundError(
+                f"Order {order_number} was not found."
+            )
+
+        # ---------------------------------------------------------
+        # RE-CHECK BUSINESS ELIGIBILITY WHILE LOCKED
+        # ---------------------------------------------------------
+
+        eligibility = self._check_order_cancellation_eligibility(
+            order
         )
 
         if not eligibility.allowed:
@@ -175,17 +196,20 @@ class OrderService:
         # ---------------------------------------------------------
 
         if refundable_payments:
-            # Multiple captured/refundable payments are an unusual
-            # financial state. Do not choose one arbitrarily.
+            # Multiple captured/refundable payments represent an
+            # unusual financial state. Do not choose one arbitrarily.
             if len(refundable_payments) > 1:
                 return CancellationResult(
                     cancelled=False,
-                    reason="multiple_refundable_payments_require_review",
+                    reason=(
+                        "multiple_refundable_payments_require_review"
+                    ),
                     requires_refund=True,
                 )
 
             payment = refundable_payments[0]
 
+            # The service, not the LLM, determines the refund amount.
             refundable_amount = (
                 self.refunds.calculate_refundable_amount(
                     payment
@@ -199,8 +223,8 @@ class OrderService:
                     requires_refund=True,
                 )
 
-            # Create the refund inside the SAME SQLAlchemy session /
-            # transaction as the order cancellation.
+            # RefundService locks the payment row before creating
+            # the refund.
             refund_result = self.refunds.create_refund(
                 payment_id=payment.id,
                 amount=refundable_amount,
@@ -230,8 +254,6 @@ class OrderService:
         # CANCELLATION WITHOUT REFUND
         # ---------------------------------------------------------
 
-        # No captured/refundable payment exists, so the order can
-        # simply be cancelled.
         self.orders.set_status(
             order=order,
             status="cancelled",
