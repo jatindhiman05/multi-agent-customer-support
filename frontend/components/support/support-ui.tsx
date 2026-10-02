@@ -300,19 +300,19 @@ function OrderStatusCard({
 
       <div className="flex justify-end border-t bg-muted/20 p-3">
         <Button
-          asChild
-          type="button"
-          variant="outline"
-          size="sm"
-        >
-          <Link
-            href={`/orders/${encodeURIComponent(
-              data.order_number,
-            )}`}
-          >
-            View order
-          </Link>
-        </Button>
+  type="button"
+  variant="outline"
+  size="sm"
+  render={
+    <Link
+      href={`/orders/${encodeURIComponent(
+        data.order_number,
+      )}`}
+    />
+  }
+>
+  View order
+</Button>
       </div>
     </div>
   );

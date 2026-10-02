@@ -53,7 +53,7 @@ import {
   XCircle,
 
 } from "lucide-react";
-
+import ReactMarkdown from "react-markdown";
 import { LogoutButton } from "@/components/auth/logout-button";
 
 import {
@@ -1426,11 +1426,46 @@ export function SupportApp({
 
                       >
 
-                        <div className="whitespace-pre-wrap">
-
-                          {message.content}
-
-                        </div>
+                        {message.role === "assistant" ? (
+  <ReactMarkdown
+    components={{
+      p: ({ children }) => (
+        <p className="mb-3 last:mb-0">
+          {children}
+        </p>
+      ),
+      strong: ({ children }) => (
+        <strong className="font-semibold text-foreground">
+          {children}
+        </strong>
+      ),
+      ul: ({ children }) => (
+        <ul className="my-3 list-disc space-y-1 pl-5">
+          {children}
+        </ul>
+      ),
+      ol: ({ children }) => (
+        <ol className="my-3 list-decimal space-y-1 pl-5">
+          {children}
+        </ol>
+      ),
+      li: ({ children }) => (
+        <li>{children}</li>
+      ),
+      code: ({ children }) => (
+        <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em]">
+          {children}
+        </code>
+      ),
+    }}
+  >
+    {message.content}
+  </ReactMarkdown>
+) : (
+  <div className="whitespace-pre-wrap">
+    {message.content}
+  </div>
+)}
 
                         {message.role === "assistant" &&
 
