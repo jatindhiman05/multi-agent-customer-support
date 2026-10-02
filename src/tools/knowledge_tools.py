@@ -1,67 +1,63 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 
 from langchain_core.tools import tool
 
-from src.knowledge.chunker import chunk_knowledge_documents
+from src.db.session import SessionLocal
 from src.knowledge.embeddings import (
     SentenceTransformerEmbeddingProvider,
 )
-from src.knowledge.loader import load_knowledge_directory
 from src.knowledge.retriever import (
     KnowledgeRetriever,
     RetrievalConfig,
 )
-from src.knowledge.validator import validate_knowledge_collection
-from src.knowledge.vector_store import FAISSKnowledgeIndex
-
-
-KNOWLEDGE_ROOT = Path("knowledge")
+from src.knowledge.vector_store import (
+    PgVectorKnowledgeIndex,
+)
 
 
 @lru_cache(maxsize=1)
-def get_knowledge_retriever() -> KnowledgeRetriever:
+def get_embedding_provider() -> (
+    SentenceTransformerEmbeddingProvider
+):
     """
-    Build the application knowledge retriever once per process.
+    Load the embedding model once per application process.
 
-    The current implementation uses an in-memory FAISS index.
-    The KnowledgeRetriever boundary allows the underlying vector
-    storage implementation to be replaced later without changing
-    the agent or tool contract.
+    The model is expensive to initialize but safe to reuse for
+    knowledge-query embedding generation.
     """
 
-    documents = load_knowledge_directory(
-        KNOWLEDGE_ROOT
-    )
+    return SentenceTransformerEmbeddingProvider()
 
-    validate_knowledge_collection(
-        documents,
-        knowledge_root=KNOWLEDGE_ROOT,
-    )
 
-    chunks = chunk_knowledge_documents(
-        documents
-    )
+def retrieve_knowledge(
+    query: str,
+):
+    """
+    Retrieve authoritative VoltNest knowledge from PostgreSQL.
 
-    embedding_provider = (
-        SentenceTransformerEmbeddingProvider()
-    )
+    A fresh SQLAlchemy session is created for each retrieval operation.
+    The underlying engine manages connection pooling.
+    """
 
-    index = FAISSKnowledgeIndex(
-        embedding_provider=embedding_provider
-    )
+    embedding_provider = get_embedding_provider()
 
-    index.build(chunks)
+    with SessionLocal() as session:
+        index = PgVectorKnowledgeIndex(
+            session=session,
+            embedding_provider=embedding_provider,
+        )
 
-    return KnowledgeRetriever(
-        index=index,
-        config=RetrievalConfig(
-            top_k=3,
-            minimum_score=0.30,
-        ),
-    )
+        retriever = KnowledgeRetriever(
+            index=index,
+            config=RetrievalConfig(
+                top_k=3,
+                minimum_score=0.30,
+            ),
+        )
+
+        return retriever.retrieve(query)
 
 
 @tool
@@ -77,9 +73,7 @@ def search_knowledge_base(query: str) -> dict:
     shipment, refund, or account state.
     """
 
-    retriever = get_knowledge_retriever()
-
-    evidence = retriever.retrieve(query)
+    evidence = retrieve_knowledge(query)
 
     return {
         "success": True,
