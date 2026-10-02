@@ -114,9 +114,16 @@ def chunk_knowledge_document(
 
         # Give the embedding enough document context to understand
         # otherwise ambiguous section text.
-        retrieval_content = (
+        chunk_content = (
             f"{document.title}\n"
             f"{heading}\n\n"
+            f"{section_content}"
+        ).strip()
+
+        embedding_text = (
+            f"Title: {document.title}\n"
+            f"Topic: {document.topic.replace('_', ' ')}\n"
+            f"Section: {heading}\n\n"
             f"{section_content}"
         ).strip()
 
@@ -136,8 +143,9 @@ def chunk_knowledge_document(
                 effective_date=document.effective_date,
                 last_reviewed=document.last_reviewed,
                 owner=document.owner,
-                content=retrieval_content,
-                content_hash=_content_hash(retrieval_content),
+                content=chunk_content,
+                embedding_text=embedding_text,
+                content_hash=_content_hash(chunk_content),
                 source_path=document.source_path,
             )
         )

@@ -66,10 +66,9 @@ class FAISSKnowledgeIndex(KnowledgeIndex):
             )
 
         contents = [
-            chunk.content
+            chunk.embedding_text
             for chunk in chunks
         ]
-
         embeddings = self.embedding_provider.embed_documents(
             contents
         )

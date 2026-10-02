@@ -83,6 +83,7 @@ class KnowledgeChunk(BaseModel):
     owner: str = Field(min_length=1)
 
     content: str = Field(min_length=1)
+    embedding_text: str = Field(min_length=1)
     content_hash: str = Field(min_length=64, max_length=64)
 
     source_path: Path
