@@ -57,10 +57,12 @@ export function SupportApp({
   user,
   initialConversations,
   initialHistory,
+  initialOrderNumber,
 }: {
   user: CurrentUser;
   initialConversations: ConversationSummary[];
   initialHistory: ConversationHistory | null;
+  initialOrderNumber: string | null;
 }) {
   const router = useRouter();
 
@@ -78,7 +80,10 @@ export function SupportApp({
   const [isSending, setIsSending] = useState(false);
   const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
   const [error, setError] = useState<SupportError | null>(null);
-
+  const [orderNumber, setOrderNumber] =
+    useState<string | null>(
+      initialOrderNumber,
+    );
   const endRef = useRef<HTMLDivElement>(null);
   const loadingConversationRef = useRef(false);
 
@@ -201,6 +206,7 @@ export function SupportApp({
 
     setMessages([]);
     setConversationId(null);
+    setOrderNumber(null);
     setInput("");
     setError(null);
     setIsMobileNavigationOpen(false);
@@ -269,6 +275,7 @@ export function SupportApp({
       const result = data as unknown as ChatResponse;
 
       setConversationId(result.conversation_id);
+      setOrderNumber(null);
       router.replace(
         `/support?conversation=${encodeURIComponent(result.conversation_id)}`,
         { scroll: false },
@@ -385,6 +392,7 @@ export function SupportApp({
             ) : empty ? (
               <SupportEmptyState
                 user={user}
+                orderNumber={orderNumber}
                 disabled={busy}
                 onSend={(message) => void sendMessage(message)}
               />

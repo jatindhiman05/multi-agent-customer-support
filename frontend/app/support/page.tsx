@@ -9,6 +9,7 @@ export default async function SupportPage({
 }: {
   searchParams: Promise<{
     conversation?: string;
+    order?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -20,7 +21,10 @@ export default async function SupportPage({
   const params = await searchParams;
 
   const conversationId =
-    params.conversation ?? null;
+    params.conversation?.trim() || null;
+
+  const orderNumber =
+    params.order?.trim() || null;
 
   const {
     conversations,
@@ -45,6 +49,9 @@ export default async function SupportPage({
       user={user}
       initialConversations={conversations}
       initialHistory={history}
+      initialOrderNumber={
+        history ? null : orderNumber
+      }
     />
   );
 }
