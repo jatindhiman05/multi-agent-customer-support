@@ -1,13 +1,12 @@
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
+from src.core.llm import create_chat_groq
 from src.tools.return_tools import (
     check_return_eligibility,
+    get_order_refund_status,
     get_return_status,
     get_returnable_order_items,
 )
-from src.core.llm import create_chat_groq
-
-
 
 SYSTEM_PROMPT = """
 You are the VoltNest Returns Support Agent.
@@ -65,7 +64,6 @@ Rules:
 Keep responses concise.
 """
 
-
 llm = create_chat_groq()
 
 
@@ -74,7 +72,6 @@ def create_return_agent(customer_id: str):
     @tool
     def list_order_items(order_number: str) -> dict:
         """Get items from the authenticated customer's order."""
-
         return get_returnable_order_items.invoke(
             {
                 "order_number": order_number,
@@ -89,7 +86,6 @@ def create_return_agent(customer_id: str):
         quantity: int = 1,
     ) -> dict:
         """Check whether an order item quantity can be returned."""
-
         return check_return_eligibility.invoke(
             {
                 "order_number": order_number,
@@ -102,10 +98,24 @@ def create_return_agent(customer_id: str):
     @tool
     def lookup_return(return_number: str) -> dict:
         """Get an existing return belonging to this customer."""
-
         return get_return_status.invoke(
             {
                 "return_number": return_number,
+                "customer_id": customer_id,
+            }
+        )
+
+    @tool
+    def lookup_order_refunds(order_number: str) -> dict:
+        """
+        Get refund status for the authenticated customer's order.
+
+        Use this when the customer asks about a refund and provides an
+        order number.
+        """
+        return get_order_refund_status.invoke(
+            {
+                "order_number": order_number,
                 "customer_id": customer_id,
             }
         )
@@ -125,7 +135,6 @@ def create_return_agent(customer_id: str):
 
         This tool DOES NOT create the return.
         """
-
         return {
             "proposal_type": "create_return",
             "order_number": order_number,
@@ -141,6 +150,7 @@ def create_return_agent(customer_id: str):
             list_order_items,
             check_item_return_eligibility,
             lookup_return,
+            lookup_order_refunds,
             propose_return_action,
         ],
         prompt=SYSTEM_PROMPT,

@@ -177,4 +177,73 @@ def get_return_status(
                 }
                 for item in result.items
             ],
+            "refunds": [
+                {
+                    "refund_id": str(refund.id),
+                    "status": refund.status,
+                    "amount": str(refund.amount),
+                    "currency": refund.currency,
+                    "reason": refund.reason,
+                    "provider": refund.provider,
+                    "created_at": refund.created_at.isoformat(),
+                    "updated_at": refund.updated_at.isoformat(),
+                    "failure_code": refund.failure_code,
+                    "failure_message": refund.failure_message,
+                }
+                for refund in result.refunds
+            ],
+        }
+
+@tool
+def get_order_refund_status(
+    order_number: str,
+    customer_id: str,
+) -> dict:
+    """
+    Get refund information for one of the authenticated customer's orders.
+
+    Use this for customer-specific refund questions when the customer
+    provides an order number rather than a return number.
+    """
+
+    customer_uuid = _parse_customer_id(customer_id)
+
+    if customer_uuid is None:
+        return {
+            "success": False,
+            "error": "invalid_customer_id",
+        }
+
+    with SessionLocal() as session:
+        service = ReturnService(session)
+
+        try:
+            result = service.get_order_refund_status(
+                order_number=order_number,
+                customer_id=customer_uuid,
+            )
+        except OrderNotFoundError:
+            return {
+                "success": False,
+                "error": "order_not_found",
+            }
+
+        return {
+            "success": True,
+            "order_number": result.order_number,
+            "refunds": [
+                {
+                    "refund_id": str(refund.id),
+                    "status": refund.status,
+                    "amount": str(refund.amount),
+                    "currency": refund.currency,
+                    "reason": refund.reason,
+                    "provider": refund.provider,
+                    "created_at": refund.created_at.isoformat(),
+                    "updated_at": refund.updated_at.isoformat(),
+                    "failure_code": refund.failure_code,
+                    "failure_message": refund.failure_message,
+                }
+                for refund in result.refunds
+            ],
         }

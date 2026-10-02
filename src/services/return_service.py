@@ -9,11 +9,14 @@ from sqlalchemy.orm import Session
 
 from src.db.models import (
     OrderItem,
+    Refund,
     ReturnItem,
     ReturnRequest,
     Shipment,
     ShipmentItem,
 )
+from src.repositories.payment_repository import PaymentRepository
+from src.repositories.refund_repository import RefundRepository
 from src.repositories.order_repository import OrderRepository
 from src.repositories.return_repository import ReturnRepository
 
@@ -37,6 +40,10 @@ class ReturnResult:
     reason: str
     return_request: ReturnRequest | None
 
+@dataclass(frozen=True)
+class OrderRefundStatus:
+    order_number: str
+    refunds: list[Refund]
 
 class ReturnService:
     """
@@ -61,6 +68,8 @@ class ReturnService:
         self.session = session
         self.orders = OrderRepository(session)
         self.returns = ReturnRepository(session)
+        self.payments = PaymentRepository(session)
+        self.refunds = RefundRepository(session)
 
     # =====================================================================
     # INTERNAL HELPERS
@@ -321,7 +330,51 @@ class ReturnService:
             consumed_quantity=consumed_quantity,
             returnable_quantity=returnable_quantity,
         )
+    
+    def get_order_refund_status(
+        self,
+        *,
+        order_number: str,
+        customer_id: uuid.UUID,
+    ) -> OrderRefundStatus:
+        """
+        Get refunds associated with one of the authenticated customer's orders.
 
+        Refunds are resolved through the order's payments rather than only
+        through return requests because a refund may exist without a return,
+        such as a cancellation refund.
+        """
+
+        # Customer ownership boundary.
+        order = self.orders.get_for_customer(
+            order_number=order_number,
+            user_id=customer_id,
+        )
+
+        if order is None:
+            raise OrderNotFoundError(
+                f"Order {order_number} was not found."
+            )
+
+        payments = self.payments.list_for_order(order.id)
+
+        refunds: list[Refund] = []
+
+        for payment in payments:
+            refunds.extend(
+                self.refunds.list_for_payment(payment.id)
+            )
+
+        # Most recent refund first for customer-facing status questions.
+        refunds.sort(
+            key=lambda refund: refund.created_at,
+            reverse=True,
+        )
+
+        return OrderRefundStatus(
+            order_number=order.order_number,
+            refunds=refunds,
+        )
     # =====================================================================
     # MUTATION
     # =====================================================================
