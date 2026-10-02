@@ -111,3 +111,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = _get_int_env(
     "ACCESS_TOKEN_EXPIRE_MINUTES",
     60,
 )
+
+EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL",
+    "BAAI/bge-small-en-v1.5",
+).strip()
+
+if not EMBEDDING_MODEL:
+    raise RuntimeError(
+        "EMBEDDING_MODEL cannot be empty."
+    )

@@ -143,13 +143,16 @@ def chunk_knowledge_document(
                 effective_date=document.effective_date,
                 last_reviewed=document.last_reviewed,
                 owner=document.owner,
+
                 content=chunk_content,
                 embedding_text=embedding_text,
+
                 content_hash=_content_hash(chunk_content),
+                embedding_hash=_content_hash(embedding_text),
+
                 source_path=document.source_path,
             )
         )
-
     return chunks
 
 

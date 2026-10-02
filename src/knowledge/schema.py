@@ -84,7 +84,16 @@ class KnowledgeChunk(BaseModel):
 
     content: str = Field(min_length=1)
     embedding_text: str = Field(min_length=1)
-    content_hash: str = Field(min_length=64, max_length=64)
+
+    content_hash: str = Field(
+        min_length=64,
+        max_length=64,
+    )
+
+    embedding_hash: str = Field(
+        min_length=64,
+        max_length=64,
+    )
 
     source_path: Path
 
@@ -104,6 +113,7 @@ class KnowledgeChunk(BaseModel):
             "owner": self.owner,
             "content_hash": self.content_hash,
             "source": self.source_path.as_posix(),
+            "embedding_hash": self.embedding_hash,
         }
 
 class KnowledgeSearchResult(BaseModel):

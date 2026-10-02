@@ -100,6 +100,12 @@ class KnowledgeChunkRecord(Base):
         index=True,
     )
 
+    embedding_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+
     source_path: Mapped[str] = mapped_column(
         Text,
         nullable=False,

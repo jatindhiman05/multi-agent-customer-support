@@ -5,8 +5,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-
-DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+from src.core.config import EMBEDDING_MODEL
 
 
 class EmbeddingProvider(ABC):
@@ -20,6 +19,11 @@ class EmbeddingProvider(ABC):
     @property
     @abstractmethod
     def dimension(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def model_name(self) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -37,16 +41,18 @@ class EmbeddingProvider(ABC):
         raise NotImplementedError
 
 
-class SentenceTransformerEmbeddingProvider(EmbeddingProvider):
+class SentenceTransformerEmbeddingProvider(
+    EmbeddingProvider
+):
     """
     Local sentence-transformers embedding implementation.
     """
 
     def __init__(
         self,
-        model_name: str = DEFAULT_EMBEDDING_MODEL,
+        model_name: str = EMBEDDING_MODEL,
     ) -> None:
-        self.model_name = model_name
+        self._model_name = model_name
 
         self._model = SentenceTransformer(model_name)
 
@@ -63,6 +69,10 @@ class SentenceTransformerEmbeddingProvider(EmbeddingProvider):
     @property
     def dimension(self) -> int:
         return self._dimension
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
 
     def embed_documents(
         self,
