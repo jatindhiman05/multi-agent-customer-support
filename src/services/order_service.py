@@ -65,6 +65,20 @@ class OrderService:
 
         return order
 
+    def list_customer_orders(
+        self,
+        *,
+        customer_id: uuid.UUID,
+    ) -> list[Order]:
+        """
+        Return all orders belonging to the authenticated customer,
+        newest first.
+        """
+
+        return self.orders.list_for_customer(
+            user_id=customer_id,
+        )
+
     def _check_order_cancellation_eligibility(
         self,
         order: Order,

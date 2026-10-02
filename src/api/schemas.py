@@ -1,7 +1,8 @@
 import uuid
 
 from pydantic import BaseModel, Field
-
+from datetime import datetime
+from decimal import Decimal
 
 class ChatRequest(BaseModel):
     message: str = Field(
@@ -41,3 +42,62 @@ class CurrentUserResponse(BaseModel):
     first_name: str
     last_name: str
     role: str
+
+class OrderSummaryResponse(BaseModel):
+    order_number: str
+    status: str
+    total_amount: Decimal
+    currency: str
+    created_at: datetime
+
+
+class OrderItemResponse(BaseModel):
+    sku: str
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+    line_total: Decimal
+
+
+class ShipmentResponse(BaseModel):
+    carrier: str | None
+    tracking_number: str | None
+    status: str
+    shipped_at: datetime | None
+    estimated_delivery_at: datetime | None
+    delivered_at: datetime | None
+
+
+class PaymentResponse(BaseModel):
+    provider: str
+    payment_method: str
+    status: str
+    amount: Decimal
+    currency: str
+
+
+class OrderDetailResponse(BaseModel):
+    order_number: str
+    status: str
+
+    subtotal: Decimal
+    shipping_amount: Decimal
+    tax_amount: Decimal
+    discount_amount: Decimal
+    total_amount: Decimal
+    currency: str
+
+    shipping_recipient_name: str
+    shipping_line1: str
+    shipping_line2: str | None
+    shipping_city: str
+    shipping_state: str
+    shipping_postal_code: str
+    shipping_country_code: str
+
+    created_at: datetime
+    updated_at: datetime
+
+    items: list[OrderItemResponse]
+    payments: list[PaymentResponse]
+    shipments: list[ShipmentResponse]

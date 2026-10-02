@@ -57,8 +57,18 @@ from src.services.conversation_service import (
     ConversationNotFoundError,
     ConversationService,
 )
+from src.api.schemas import (
+    OrderDetailResponse,
+    OrderItemResponse,
+    OrderSummaryResponse,
+    PaymentResponse,
+    ShipmentResponse,
+)
 
-
+from src.services.order_service import (
+    OrderNotFoundError,
+    OrderService,
+)
 # ============================================================
 # LOGGING
 # ============================================================
@@ -441,6 +451,106 @@ def get_current_user(
             last_name=user.last_name,
             role=user.role,
         )
+
+@app.get(
+    "/orders",
+    response_model=list[OrderSummaryResponse],
+)
+def list_orders(
+    customer_id: str = Depends(get_current_customer_id),
+):
+    with SessionLocal() as session:
+        service = OrderService(session)
+
+        orders = service.list_customer_orders(
+            customer_id=uuid.UUID(customer_id),
+        )
+
+        return [
+            OrderSummaryResponse(
+                order_number=order.order_number,
+                status=order.status,
+                total_amount=order.total_amount,
+                currency=order.currency,
+                created_at=order.created_at,
+            )
+            for order in orders
+        ]
+
+
+@app.get(
+    "/orders/{order_number}",
+    response_model=OrderDetailResponse,
+)
+def get_order_details(
+    order_number: str,
+    customer_id: str = Depends(get_current_customer_id),
+):
+    with SessionLocal() as session:
+        service = OrderService(session)
+
+        try:
+            order = service.get_order(
+                order_number=order_number,
+                customer_id=uuid.UUID(customer_id),
+            )
+        except OrderNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail="Order not found.",
+            )
+
+        return OrderDetailResponse(
+            order_number=order.order_number,
+            status=order.status,
+            subtotal=order.subtotal,
+            shipping_amount=order.shipping_amount,
+            tax_amount=order.tax_amount,
+            discount_amount=order.discount_amount,
+            total_amount=order.total_amount,
+            currency=order.currency,
+            shipping_recipient_name=order.shipping_recipient_name,
+            shipping_line1=order.shipping_line1,
+            shipping_line2=order.shipping_line2,
+            shipping_city=order.shipping_city,
+            shipping_state=order.shipping_state,
+            shipping_postal_code=order.shipping_postal_code,
+            shipping_country_code=order.shipping_country_code,
+            created_at=order.created_at,
+            updated_at=order.updated_at,
+            items=[
+                OrderItemResponse(
+                    sku=item.sku,
+                    product_name=item.product_name,
+                    quantity=item.quantity,
+                    unit_price=item.unit_price,
+                    line_total=item.line_total,
+                )
+                for item in order.items
+            ],
+            payments=[
+                PaymentResponse(
+                    provider=payment.provider,
+                    payment_method=payment.payment_method,
+                    status=payment.status,
+                    amount=payment.amount,
+                    currency=payment.currency,
+                )
+                for payment in order.payments
+            ],
+            shipments=[
+                ShipmentResponse(
+                    carrier=shipment.carrier,
+                    tracking_number=shipment.tracking_number,
+                    status=shipment.status,
+                    shipped_at=shipment.shipped_at,
+                    estimated_delivery_at=shipment.estimated_delivery_at,
+                    delivered_at=shipment.delivered_at,
+                )
+                for shipment in order.shipments
+            ],
+        )
+
 # ============================================================
 # CHAT
 # ============================================================
