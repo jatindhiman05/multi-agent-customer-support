@@ -1,5 +1,5 @@
 import uuid
-
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 from datetime import datetime
 from decimal import Decimal
@@ -12,11 +12,22 @@ class ChatRequest(BaseModel):
 
     conversation_id: uuid.UUID | None = None
 
+class SupportUIResponse(BaseModel):
+    type: Literal[
+        "order_status",
+        "confirmation",
+        "return_result",
+        "cancellation_result",
+        "support_ticket",
+    ]
+
+    data: dict[str, Any]
 
 class ChatResponse(BaseModel):
     response: str
     route: str
     conversation_id: uuid.UUID
+    ui: SupportUIResponse | None = None
 
 
 class LoginRequest(BaseModel):
@@ -110,11 +121,14 @@ class ConversationSummaryResponse(BaseModel):
     updated_at: datetime
 
 
-class ConversationMessageResponse(BaseModel):
+class ConversationMessageResponse(
+    BaseModel
+):
     id: uuid.UUID
     role: str
     content: str
     route: str | None
+    ui: SupportUIResponse | None = None
     created_at: datetime
 
 

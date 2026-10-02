@@ -1,7 +1,15 @@
-from typing import Annotated, Literal
+from typing import (
+    Annotated,
+    Any,
+    Literal,
+)
 
-from langchain_core.messages import BaseMessage
-from langgraph.graph.message import add_messages
+from langchain_core.messages import (
+    BaseMessage,
+)
+from langgraph.graph.message import (
+    add_messages,
+)
 from typing_extensions import TypedDict
 
 
@@ -21,15 +29,20 @@ ActionType = Literal[
 ]
 
 
+UIType = Literal[
+    "order_status",
+    "confirmation",
+    "return_result",
+    "cancellation_result",
+    "support_ticket",
+]
+
+
 class PendingAction(
     TypedDict,
     total=False,
 ):
-    # Stable application-generated identity for this logical mutation.
-    # It is persisted inside LangGraph state/checkpoints and reused
-    # when the customer later confirms the action.
     action_id: str
-
     action_type: ActionType
 
     # Shared
@@ -40,6 +53,13 @@ class PendingAction(
     product_name: str
     quantity: int
     reason: str
+
+
+class SupportUI(
+    TypedDict,
+):
+    type: UIType
+    data: dict[str, Any]
 
 
 class SupportState(
@@ -62,5 +82,15 @@ class SupportState(
         "unclear",
     ] | None
 
-    # Controlled destructive/mutating action state.
-    pending_action: PendingAction | None
+    # Controlled destructive/mutating
+    # action state.
+    pending_action: (
+        PendingAction | None
+    )
+
+    # Structured presentation metadata.
+    #
+    # Agents/services determine facts.
+    # The API/frontend use this only for
+    # presentation.
+    ui: SupportUI | None

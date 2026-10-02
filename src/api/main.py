@@ -656,6 +656,7 @@ def chat(
         )
 
         route = result["route"]
+        ui_payload = result.get("ui")
 
         response_content = (
             result["messages"][-1].content
@@ -684,6 +685,7 @@ def chat(
                 role="assistant",
                 content=response_content,
                 route=route,
+                ui_payload=ui_payload,
             )
 
             session.commit()
@@ -707,9 +709,8 @@ def chat(
         return ChatResponse(
             response=response_content,
             route=route,
-            conversation_id=(
-                conversation_id
-            ),
+            conversation_id=conversation_id,
+            ui=ui_payload,
         )
 
     except Exception:
@@ -788,6 +789,7 @@ def get_conversation_messages(
                     role=message.role,
                     content=message.content,
                     route=message.route,
+                    ui=message.ui_payload,
                     created_at=message.created_at,
                 )
                 for message in conversation.messages

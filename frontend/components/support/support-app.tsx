@@ -1,11 +1,11 @@
 "use client";
 
-
-
 import Link from "next/link";
 
 import {
+
   useRouter
+
 } from "next/navigation";
 
 import {
@@ -54,8 +54,6 @@ import {
 
 } from "lucide-react";
 
-
-
 import { LogoutButton } from "@/components/auth/logout-button";
 
 import {
@@ -88,6 +86,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 import type { CurrentUser } from "@/lib/auth/get-current-user";
 
+import { SupportUIRenderer } from "@/components/support/support-ui";
+
 import type {
 
   ChatResponse,
@@ -98,9 +98,9 @@ import type {
 
   SupportRoute,
 
+  SupportUI,
+
 } from "@/types/api";
-
-
 
 type Message = {
 
@@ -112,9 +112,9 @@ type Message = {
 
   route?: SupportRoute;
 
+  ui?: SupportUI | null;
+
 };
-
-
 
 type QuickAction = {
 
@@ -127,8 +127,6 @@ type QuickAction = {
   icon: typeof Truck;
 
 };
-
-
 
 const QUICK_ACTIONS: QuickAction[] = [
 
@@ -184,8 +182,6 @@ const QUICK_ACTIONS: QuickAction[] = [
 
 ];
 
-
-
 function initials(user: CurrentUser) {
 
   return (
@@ -198,8 +194,6 @@ function initials(user: CurrentUser) {
 
 }
 
-
-
 function routeLabel(route?: SupportRoute) {
 
   switch (route) {
@@ -208,37 +202,25 @@ function routeLabel(route?: SupportRoute) {
 
       return "Order support";
 
-
-
     case "knowledge":
 
       return "Knowledge";
-
-
 
     case "returns":
 
       return "Returns";
 
-
-
     case "cancellation":
 
       return "Cancellation";
-
-
 
     case "escalation":
 
       return "Human support";
 
-
-
     case "confirmation":
 
       return "Confirmation required";
-
-
 
     default:
 
@@ -247,8 +229,6 @@ function routeLabel(route?: SupportRoute) {
   }
 
 }
-
-
 
 function Sidebar({
 
@@ -296,8 +276,6 @@ function Sidebar({
 
         </div>
 
-
-
         <div>
 
           <p className="font-semibold tracking-tight">
@@ -305,8 +283,6 @@ function Sidebar({
             VoltNest
 
           </p>
-
-
 
           <p className="text-xs text-muted-foreground">
 
@@ -317,8 +293,6 @@ function Sidebar({
         </div>
 
       </div>
-
-
 
       <div className="p-4">
 
@@ -338,8 +312,6 @@ function Sidebar({
 
         </Button>
 
-
-
         <Button
 
           variant="ghost"
@@ -358,8 +330,6 @@ function Sidebar({
 
       </div>
 
-
-
       <div className="min-h-0 flex-1 px-3">
 
         <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -367,8 +337,6 @@ function Sidebar({
           Conversations
 
         </p>
-
-
 
         <div className="h-full overflow-y-auto pb-4">
 
@@ -400,8 +368,6 @@ function Sidebar({
 
                   conversation.id === activeConversationId;
 
-
-
                 return (
 
                   <button
@@ -432,8 +398,6 @@ function Sidebar({
 
                     <MessageSquareText className="size-4 shrink-0" />
 
-
-
                     <span className="truncate">
 
                       {conversation.title ??
@@ -456,8 +420,6 @@ function Sidebar({
 
       </div>
 
-
-
       <div className="border-t p-4">
 
         <div className="mb-3 flex items-center gap-3">
@@ -472,8 +434,6 @@ function Sidebar({
 
           </Avatar>
 
-
-
           <div className="min-w-0 flex-1">
 
             <p className="truncate text-sm font-medium">
@@ -481,8 +441,6 @@ function Sidebar({
               {user.first_name} {user.last_name}
 
             </p>
-
-
 
             <p className="truncate text-xs text-muted-foreground">
 
@@ -494,8 +452,6 @@ function Sidebar({
 
         </div>
 
-
-
         <LogoutButton />
 
       </div>
@@ -506,63 +462,81 @@ function Sidebar({
 
 }
 
-
-
 export function SupportApp({
+
   user,
+
   initialConversations,
+
   initialHistory,
+
 }: {
+
   user: CurrentUser;
+
   initialConversations: ConversationSummary[];
+
   initialHistory: ConversationHistory | null;
+
 }) {
 
   const router = useRouter();
 
-
-
-
-
-
   const [messages, setMessages] = useState<Message[]>(
+
   () =>
+
     initialHistory?.messages.map(
+
       (message) => ({
+
         id: message.id,
+
         role: message.role,
+
         content: message.content,
+
         route: message.route ?? undefined,
+
+        ui: message.ui,
+
       }),
+
     ) ?? [],
+
 );
 
-
-
   const [
+
   conversationId,
+
   setConversationId,
+
 ] = useState<string | null>(
+
   initialHistory?.id ?? null,
+
 );
 
-
-
   const [
+
   conversations,
+
   setConversations,
+
 ] = useState<ConversationSummary[]>(
+
   initialConversations,
+
 );
 
-
-
   const [
+
   isLoadingConversations,
+
   setIsLoadingConversations,
+
 ] = useState(false);
-
-
 
   const [
 
@@ -572,25 +546,15 @@ export function SupportApp({
 
   ] = useState(false);
 
-
-
   const [input, setInput] = useState("");
-
-
 
   const [isSending, setIsSending] = useState(false);
 
-
-
   const [error, setError] = useState<string | null>(null);
-
-
 
   const endRef = useRef<HTMLDivElement>(null);
 
   const loadingConversationRef = useRef(false);
-
-
 
   useEffect(() => {
 
@@ -602,153 +566,258 @@ export function SupportApp({
 
   }, [messages, isSending]);
 
-
-
   const handleAuthenticationFailure = useCallback(() => {
+
     router.replace("/login");
+
     router.refresh();
+
   }, [router]);
 
   const loadConversations = useCallback(async () => {
+
     try {
+
       setIsLoadingConversations(true);
 
       const response = await fetch(
+
         "/api/conversations",
+
         {
+
           method: "GET",
+
           cache: "no-store",
+
         },
+
       );
 
       const data = await response.json();
 
       if (!response.ok) {
+
         if (
+
           response.status === 401 ||
+
           response.status === 403
+
         ) {
+
           handleAuthenticationFailure();
+
           return;
+
         }
 
         throw new Error(
+
           data.detail ??
+
             "Unable to load conversations.",
+
         );
+
       }
 
       setConversations(
+
         data as ConversationSummary[],
+
       );
+
     } catch (caughtError) {
+
       setError(
+
         caughtError instanceof Error
+
           ? caughtError.message
+
           : "Unable to load conversations.",
+
       );
+
     } finally {
+
       setIsLoadingConversations(false);
+
     }
+
   }, [handleAuthenticationFailure]);
 
   const loadConversation = useCallback(
+
     async (
+
       selectedConversationId: string,
+
     ) => {
+
       if (loadingConversationRef.current) {
+
         return;
+
       }
 
       if (
+
         selectedConversationId === conversationId &&
+
         messages.length > 0
+
       ) {
+
         return;
+
       }
 
       loadingConversationRef.current = true;
 
       try {
+
         setIsLoadingConversation(true);
+
         setError(null);
 
         const response = await fetch(
+
           `/api/conversations/${encodeURIComponent(
+
             selectedConversationId,
+
           )}/messages`,
+
           {
+
             method: "GET",
+
             cache: "no-store",
+
           },
+
         );
 
         const data = await response.json();
 
         if (!response.ok) {
+
           if (
+
             response.status === 401 ||
+
             response.status === 403
+
           ) {
+
             handleAuthenticationFailure();
+
             return;
+
           }
 
           if (response.status === 404) {
+
             setConversationId(null);
+
             setMessages([]);
+
             router.replace("/support");
+
             setError(
+
               "That conversation is no longer available.",
+
             );
+
             return;
+
           }
 
           throw new Error(
+
             data.detail ??
+
               "Unable to load this conversation.",
+
           );
+
         }
 
         const history = data as ConversationHistory;
 
         const loadedMessages: Message[] =
+
           history.messages.map((message) => ({
+
             id: message.id,
+
             role: message.role,
+
             content: message.content,
+
             route: message.route ?? undefined,
+
+            ui: message.ui,
+
           }));
 
         setConversationId(history.id);
+
         setMessages(loadedMessages);
+
         setInput("");
 
         router.replace(
+
             `/support?conversation=${encodeURIComponent(
+
               history.id,
+
             )}`,
+
             { scroll: false },
+
           );
+
       } catch (caughtError) {
+
         setError(
+
           caughtError instanceof Error
+
             ? caughtError.message
+
             : "Unable to load this conversation.",
+
         );
+
       } finally {
+
         loadingConversationRef.current = false;
+
         setIsLoadingConversation(false);
+
       }
+
     },
+
     [
+
       conversationId,
+
       handleAuthenticationFailure,
+
       messages.length,
+
       router,
+
     ],
+
   );
-  
+
   function newConversation() {
 
   if (
@@ -763,8 +832,6 @@ export function SupportApp({
 
   }
 
-
-
   setMessages([]);
 
   setConversationId(null);
@@ -772,8 +839,6 @@ export function SupportApp({
   setInput("");
 
   setError(null);
-
-
 
   router.replace("/support", {
 
@@ -783,8 +848,6 @@ export function SupportApp({
 
 }
 
-
-
   async function sendMessage(
 
     rawMessage: string,
@@ -792,8 +855,6 @@ export function SupportApp({
   ) {
 
     const message = rawMessage.trim();
-
-
 
     if (
 
@@ -809,13 +870,9 @@ export function SupportApp({
 
     }
 
-
-
     const currentConversationId =
 
       conversationId;
-
-
 
     const userMessage: Message = {
 
@@ -827,8 +884,6 @@ export function SupportApp({
 
     };
 
-
-
     setMessages((current) => [
 
       ...current,
@@ -837,15 +892,11 @@ export function SupportApp({
 
     ]);
 
-
-
     setInput("");
 
     setError(null);
 
     setIsSending(true);
-
-
 
     try {
 
@@ -879,11 +930,7 @@ export function SupportApp({
 
       );
 
-
-
       const data = await response.json();
-
-
 
       if (!response.ok) {
 
@@ -901,8 +948,6 @@ export function SupportApp({
 
         }
 
-
-
         throw new Error(
 
           data.detail ??
@@ -913,19 +958,13 @@ export function SupportApp({
 
       }
 
-
-
       const result = data as ChatResponse;
-
-
 
       setConversationId(
 
         result.conversation_id,
 
       );
-
-
 
       router.replace(
 
@@ -943,8 +982,6 @@ export function SupportApp({
 
 );
 
-
-
       setMessages((current) => [
 
         ...current,
@@ -959,11 +996,11 @@ export function SupportApp({
 
           route: result.route,
 
+          ui: result.ui,
+
         },
 
       ]);
-
-
 
       await loadConversations();
 
@@ -987,8 +1024,6 @@ export function SupportApp({
 
   }
 
-
-
   function handleSubmit(
 
     event: FormEvent<HTMLFormElement>,
@@ -997,13 +1032,9 @@ export function SupportApp({
 
     event.preventDefault();
 
-
-
     void sendMessage(input);
 
   }
-
-
 
   function handleKeyDown(
 
@@ -1021,19 +1052,21 @@ export function SupportApp({
 
       event.preventDefault();
 
-
-
       void sendMessage(input);
 
     }
 
   }
 
-
-
   const empty = messages.length === 0;
 
+  const latestMessage =
 
+    messages.length > 0
+
+      ? messages[messages.length - 1]
+
+      : undefined;
 
   const sidebarProps = {
 
@@ -1065,8 +1098,6 @@ export function SupportApp({
 
   };
 
-
-
   return (
 
     <div className="h-dvh overflow-hidden bg-background">
@@ -1076,8 +1107,6 @@ export function SupportApp({
         <Sidebar {...sidebarProps} />
 
       </aside>
-
-
 
       <div className="flex h-full flex-col lg:pl-72">
 
@@ -1107,8 +1136,6 @@ export function SupportApp({
 
                 <Menu className="size-4" />
 
-
-
                 <span className="sr-only">
 
                   Open navigation
@@ -1116,8 +1143,6 @@ export function SupportApp({
                 </span>
 
               </SheetTrigger>
-
-
 
               <SheetContent
 
@@ -1137,8 +1162,6 @@ export function SupportApp({
 
                   </SheetTitle>
 
-
-
                   <SheetDescription>
 
                     Support navigation
@@ -1147,15 +1170,11 @@ export function SupportApp({
 
                 </SheetHeader>
 
-
-
                 <Sidebar {...sidebarProps} />
 
               </SheetContent>
 
             </Sheet>
-
-
 
             <div>
 
@@ -1164,8 +1183,6 @@ export function SupportApp({
                 Support
 
               </h1>
-
-
 
               <p className="hidden text-xs text-muted-foreground sm:block">
 
@@ -1177,8 +1194,6 @@ export function SupportApp({
 
           </div>
 
-
-
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
 
             <span className="hidden sm:inline">
@@ -1186,8 +1201,6 @@ export function SupportApp({
               Signed in as
 
             </span>
-
-
 
             <span className="font-medium text-foreground">
 
@@ -1198,8 +1211,6 @@ export function SupportApp({
           </div>
 
         </header>
-
-
 
         <main className="min-h-0 flex-1 overflow-y-auto">
 
@@ -1233,8 +1244,6 @@ export function SupportApp({
 
                     </div>
 
-
-
                     <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
 
                       How can we help,{" "}
@@ -1242,8 +1251,6 @@ export function SupportApp({
                       {user.first_name}?
 
                     </h2>
-
-
 
                     <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
 
@@ -1259,8 +1266,6 @@ export function SupportApp({
 
                   </div>
 
-
-
                   <div className="grid gap-3 sm:grid-cols-2">
 
                     {QUICK_ACTIONS.map(
@@ -1270,8 +1275,6 @@ export function SupportApp({
                         const Icon =
 
                           action.icon;
-
-
 
                         return (
 
@@ -1305,15 +1308,11 @@ export function SupportApp({
 
                             <Icon className="mb-3 size-5 text-muted-foreground transition-colors group-hover:text-foreground" />
 
-
-
                             <p className="text-sm font-medium">
 
                               {action.label}
 
                             </p>
-
-
 
                             <p className="mt-1 text-xs leading-5 text-muted-foreground">
 
@@ -1339,9 +1338,17 @@ export function SupportApp({
 
               <div className="flex-1 space-y-7 py-8">
 
-                {messages.map(
+                {messages.map((message) => {
 
-                  (message) => (
+                  const actionable =
+
+                    message.role === "assistant" &&
+
+                    message.ui?.type === "confirmation" &&
+
+                    latestMessage?.id === message.id;
+
+                  return (
 
                     <div
 
@@ -1361,9 +1368,7 @@ export function SupportApp({
 
                       <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
 
-                        {message.role ===
-
-                        "assistant" ? (
+                        {message.role === "assistant" ? (
 
                           <>
 
@@ -1373,21 +1378,13 @@ export function SupportApp({
 
                             </div>
 
-
-
                             <span className="font-medium text-foreground">
 
                               VoltNest Support
 
                             </span>
 
-
-
-                            {routeLabel(
-
-                              message.route,
-
-                            ) && (
+                            {routeLabel(message.route) && (
 
                               <span>
 
@@ -1395,11 +1392,7 @@ export function SupportApp({
 
                                 ·{" "}
 
-                                {routeLabel(
-
-                                  message.route,
-
-                                )}
+                                {routeLabel(message.route)}
 
                               </span>
 
@@ -1419,8 +1412,6 @@ export function SupportApp({
 
                       </div>
 
-
-
                       <div
 
                         className={
@@ -1429,23 +1420,53 @@ export function SupportApp({
 
                             ? "whitespace-pre-wrap rounded-2xl rounded-tr-md bg-primary px-4 py-3 text-sm leading-6 text-primary-foreground"
 
-                            : "whitespace-pre-wrap rounded-2xl rounded-tl-md border bg-card px-4 py-3 text-sm leading-6"
+                            : "rounded-2xl rounded-tl-md border bg-card px-4 py-3 text-sm leading-6"
 
                         }
 
                       >
 
-                        {message.content}
+                        <div className="whitespace-pre-wrap">
+
+                          {message.content}
+
+                        </div>
+
+                        {message.role === "assistant" &&
+
+                          message.ui && (
+
+                            <SupportUIRenderer
+
+                              ui={message.ui}
+
+                              actionable={actionable}
+
+                              isSending={isSending}
+
+                              onConfirm={() => {
+
+                                void sendMessage("Confirm");
+
+                              }}
+
+                              onDecline={() => {
+
+                                void sendMessage("Decline");
+
+                              }}
+
+                            />
+
+                          )}
 
                       </div>
 
                     </div>
 
-                  ),
+                  );
 
-                )}
-
-
+                })}
 
                 {isSending && (
 
@@ -1459,8 +1480,6 @@ export function SupportApp({
 
                       </div>
 
-
-
                       <span className="font-medium">
 
                         VoltNest Support
@@ -1468,8 +1487,6 @@ export function SupportApp({
                       </span>
 
                     </div>
-
-
 
                     <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-md border bg-card px-4 py-4">
 
@@ -1485,8 +1502,6 @@ export function SupportApp({
 
                 )}
 
-
-
                 <div ref={endRef} />
 
               </div>
@@ -1496,8 +1511,6 @@ export function SupportApp({
           </div>
 
         </main>
-
-
 
         <div className="shrink-0 border-t bg-background px-4 py-4 md:px-8">
 
@@ -1514,8 +1527,6 @@ export function SupportApp({
               >
 
                 <span>{error}</span>
-
-
 
                 <button
 
@@ -1538,8 +1549,6 @@ export function SupportApp({
               </div>
 
             )}
-
-
 
             <form
 
@@ -1583,8 +1592,6 @@ export function SupportApp({
 
               />
 
-
-
               <Button
 
                 type="submit"
@@ -1612,8 +1619,6 @@ export function SupportApp({
               </Button>
 
             </form>
-
-
 
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
 

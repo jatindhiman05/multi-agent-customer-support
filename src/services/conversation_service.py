@@ -1,11 +1,19 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import (
+    Session,
+    selectinload,
+)
 
-from src.db.models.conversation import Conversation
-from src.db.models.conversation_message import ConversationMessage
+from src.db.models.conversation import (
+    Conversation,
+)
+from src.db.models.conversation_message import (
+    ConversationMessage,
+)
 
 
 class ConversationNotFoundError(Exception):
@@ -17,7 +25,10 @@ class ConversationAccessDeniedError(Exception):
 
 
 class ConversationService:
-    def __init__(self, session: Session):
+    def __init__(
+        self,
+        session: Session,
+    ):
         self.session = session
 
     def create(
@@ -28,13 +39,17 @@ class ConversationService:
         conversation = Conversation(
             customer_id=customer_id,
             title=(
-                self._make_title(first_message)
+                self._make_title(
+                    first_message
+                )
                 if first_message
                 else None
             ),
         )
 
-        self.session.add(conversation)
+        self.session.add(
+            conversation
+        )
         self.session.flush()
 
         return conversation
@@ -52,8 +67,13 @@ class ConversationService:
         if conversation is None:
             raise ConversationNotFoundError()
 
-        if conversation.customer_id != customer_id:
-            raise ConversationAccessDeniedError()
+        if (
+            conversation.customer_id
+            != customer_id
+        ):
+            raise (
+                ConversationAccessDeniedError()
+            )
 
         return conversation
 
@@ -61,19 +81,22 @@ class ConversationService:
         self,
         customer_id: uuid.UUID,
     ) -> list[Conversation]:
-
         statement = (
             select(Conversation)
             .where(
-                Conversation.customer_id == customer_id,
+                Conversation.customer_id
+                == customer_id,
                 Conversation.messages.any(),
             )
             .order_by(
                 Conversation.updated_at.desc()
             )
         )
+
         return list(
-            self.session.scalars(statement).all()
+            self.session.scalars(
+                statement
+            ).all()
         )
 
     def get_with_messages(
@@ -89,19 +112,27 @@ class ConversationService:
                 )
             )
             .where(
-                Conversation.id == conversation_id
+                Conversation.id
+                == conversation_id
             )
         )
 
-        conversation = self.session.scalar(
-            statement
+        conversation = (
+            self.session.scalar(
+                statement
+            )
         )
 
         if conversation is None:
             raise ConversationNotFoundError()
 
-        if conversation.customer_id != customer_id:
-            raise ConversationAccessDeniedError()
+        if (
+            conversation.customer_id
+            != customer_id
+        ):
+            raise (
+                ConversationAccessDeniedError()
+            )
 
         return conversation
 
@@ -112,31 +143,59 @@ class ConversationService:
         role: str,
         content: str,
         route: str | None = None,
+        ui_payload: (
+            dict[str, Any] | None
+        ) = None,
     ) -> ConversationMessage:
-        if role not in {"user", "assistant"}:
+        if role not in {
+            "user",
+            "assistant",
+        }:
             raise ValueError(
-                "Conversation message role must be "
-                "'user' or 'assistant'."
+                "Conversation message role "
+                "must be 'user' or "
+                "'assistant'."
+            )
+
+        # Structured UI is generated only for
+        # assistant responses.
+        if (
+            role != "assistant"
+            and ui_payload is not None
+        ):
+            raise ValueError(
+                "Structured UI payloads may "
+                "only be attached to "
+                "assistant messages."
             )
 
         message = ConversationMessage(
-            conversation_id=conversation.id,
+            conversation_id=(
+                conversation.id
+            ),
             role=role,
             content=content,
             route=route,
+            ui_payload=ui_payload,
         )
 
         conversation.updated_at = (
-            datetime.now(timezone.utc)
+            datetime.now(
+                timezone.utc
+            )
         )
 
-        self.session.add(message)
+        self.session.add(
+            message
+        )
         self.session.flush()
 
         return message
 
     @staticmethod
-    def _make_title(message: str) -> str:
+    def _make_title(
+        message: str,
+    ) -> str:
         cleaned = " ".join(
             message.strip().split()
         )
@@ -144,4 +203,6 @@ class ConversationService:
         if len(cleaned) <= 80:
             return cleaned
 
-        return f"{cleaned[:77].rstrip()}..."
+        return (
+            f"{cleaned[:77].rstrip()}..."
+        )

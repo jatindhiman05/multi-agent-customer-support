@@ -6,26 +6,102 @@ export type SupportRoute =
   | "escalation"
   | "confirmation";
 
+
 export interface LoginRequest {
   email: string;
   password: string;
 }
+
 
 export interface TokenResponse {
   access_token: string;
   token_type: "bearer";
 }
 
+
+export interface ConfirmationUIData {
+  action_id: string;
+  action: "create_return" | "cancel_order";
+  order_number: string;
+
+  product_name?: string;
+  quantity?: number;
+  reason?: string;
+
+  title: string;
+  description: string;
+  confirm_label: string;
+  cancel_label: string;
+}
+
+
+export interface ReturnResultUIData {
+  return_number: string;
+  order_number: string;
+  product_name: string;
+  quantity: number;
+  status: string;
+}
+
+
+export interface CancellationResultUIData {
+  order_number: string;
+  status: string;
+  requires_refund: boolean;
+  refund_id: string | null;
+}
+
+
+export interface OrderStatusUIData {
+  order_number: string;
+  status: string;
+  [key: string]: unknown;
+}
+
+
+export interface SupportTicketUIData {
+  ticket_number: string;
+  status: string;
+  [key: string]: unknown;
+}
+
+
+export type SupportUI =
+  | {
+      type: "confirmation";
+      data: ConfirmationUIData;
+    }
+  | {
+      type: "return_result";
+      data: ReturnResultUIData;
+    }
+  | {
+      type: "cancellation_result";
+      data: CancellationResultUIData;
+    }
+  | {
+      type: "order_status";
+      data: OrderStatusUIData;
+    }
+  | {
+      type: "support_ticket";
+      data: SupportTicketUIData;
+    };
+
+
 export interface ChatRequest {
   message: string;
   conversation_id?: string | null;
 }
 
+
 export interface ChatResponse {
   response: string;
   route: SupportRoute;
   conversation_id: string;
+  ui: SupportUI | null;
 }
+
 
 export interface OrderSummary {
   order_number: string;
@@ -35,6 +111,7 @@ export interface OrderSummary {
   created_at: string;
 }
 
+
 export interface OrderItem {
   sku: string;
   product_name: string;
@@ -42,6 +119,7 @@ export interface OrderItem {
   unit_price: string;
   line_total: string;
 }
+
 
 export interface OrderShipment {
   carrier: string | null;
@@ -52,6 +130,7 @@ export interface OrderShipment {
   delivered_at: string | null;
 }
 
+
 export interface OrderPayment {
   provider: string;
   payment_method: string;
@@ -59,6 +138,7 @@ export interface OrderPayment {
   amount: string;
   currency: string;
 }
+
 
 export interface OrderDetail {
   order_number: string;
@@ -87,6 +167,7 @@ export interface OrderDetail {
   shipments: OrderShipment[];
 }
 
+
 export interface ConversationSummary {
   id: string;
   title: string | null;
@@ -94,13 +175,16 @@ export interface ConversationSummary {
   updated_at: string;
 }
 
+
 export interface ConversationMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   route: SupportRoute | null;
+  ui: SupportUI | null;
   created_at: string;
 }
+
 
 export interface ConversationHistory {
   id: string;

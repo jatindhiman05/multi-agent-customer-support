@@ -1,9 +1,22 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import (
+    JSONB,
+    UUID,
+)
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from src.db.base import Base
 
@@ -42,14 +55,25 @@ class ConversationMessage(Base):
         nullable=True,
     )
 
+    ui_payload: Mapped[
+        dict[str, Any] | None
+    ] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(
+            timezone.utc
+        ),
         nullable=False,
         index=True,
     )
 
-    conversation: Mapped["Conversation"] = relationship(
+    conversation: Mapped[
+        "Conversation"
+    ] = relationship(
         "Conversation",
         back_populates="messages",
     )
