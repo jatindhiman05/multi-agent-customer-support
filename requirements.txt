@@ -8,6 +8,7 @@ langchain-core
 langchain-huggingface
 sentence-transformers
 faiss-cpu
+langgraph==1.2.12
 langgraph-checkpoint-postgres
 PyJWT
 pwdlib[argon2]
