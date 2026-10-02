@@ -17,6 +17,7 @@ class ChatResponse(BaseModel):
     route: str
     conversation_id: uuid.UUID
 
+
 class LoginRequest(BaseModel):
     email: str = Field(
         min_length=3,
@@ -32,3 +33,11 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class CurrentUserResponse(BaseModel):
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    role: str

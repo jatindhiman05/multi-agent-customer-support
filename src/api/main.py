@@ -34,7 +34,8 @@ from src.api.dependencies import (
 )
 from src.api.schemas import (
     ChatRequest,
-    ChatResponse,    
+    ChatResponse,
+    CurrentUserResponse,
     LoginRequest,
     TokenResponse,
 )
@@ -410,6 +411,35 @@ def login(
 
         return TokenResponse(
             access_token=access_token,
+        )
+
+@app.get(
+    "/auth/me",
+    response_model=CurrentUserResponse,
+)
+def get_current_user(
+    customer_id: str = Depends(
+        get_current_customer_id
+    ),
+) -> CurrentUserResponse:
+    with SessionLocal() as session:
+        user = session.get(
+            User,
+            uuid.UUID(customer_id),
+        )
+
+        if user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid access token.",
+            )
+
+        return CurrentUserResponse(
+            id=str(user.id),
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            role=user.role,
         )
 # ============================================================
 # CHAT
