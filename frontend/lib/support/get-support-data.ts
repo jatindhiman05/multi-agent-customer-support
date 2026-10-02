@@ -1,15 +1,11 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-
+import { BACKEND_API_URL } from "@/lib/api/server";
 import type {
   ConversationHistory,
   ConversationSummary,
 } from "@/types/api";
-
-const BACKEND_API_URL =
-  process.env.BACKEND_API_URL ??
-  "http://127.0.0.1:8000";
 
 const SESSION_COOKIE_NAME = "voltnest_session";
 
