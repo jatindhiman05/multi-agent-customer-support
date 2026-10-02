@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import uuid
 import ast
 from src.core.observability import observe_operation
 from langchain_core.messages import (
@@ -218,6 +218,7 @@ def return_node(
         }
 
     pending_action: PendingAction = {
+        "action_id": str(uuid.uuid4()),
         "action_type": "create_return",
         "order_number": proposal[
             "order_number"
@@ -307,6 +308,7 @@ def cancellation_node(
         }
 
     pending_action: PendingAction = {
+        "action_id": str(uuid.uuid4()),
         "action_type": "cancel_order",
         "order_number": proposal[
             "order_number"

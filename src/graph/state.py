@@ -25,6 +25,11 @@ class PendingAction(
     TypedDict,
     total=False,
 ):
+    # Stable application-generated identity for this logical mutation.
+    # It is persisted inside LangGraph state/checkpoints and reused
+    # when the customer later confirms the action.
+    action_id: str
+
     action_type: ActionType
 
     # Shared
