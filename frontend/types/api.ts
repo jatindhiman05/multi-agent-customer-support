@@ -78,7 +78,8 @@ export interface OrderStatusUIData {
 export interface SupportTicketUIData {
   ticket_number: string;
   status: string;
-  [key: string]: unknown;
+  priority: string | null;
+  order_number: string | null;
 }
 
 
