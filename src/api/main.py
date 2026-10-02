@@ -3,7 +3,13 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from sqlalchemy import select
 
+from src.core.security import (
+    create_access_token,
+    verify_password,
+)
+from src.db.models import User
 from fastapi import (
     Depends,
     FastAPI,
@@ -19,7 +25,9 @@ from src.api.dependencies import (
 )
 from src.api.schemas import (
     ChatRequest,
-    ChatResponse,
+    ChatResponse,    
+    LoginRequest,
+    TokenResponse,
 )
 from src.core.context import (
     get_request_id,
@@ -288,6 +296,60 @@ def health():
     }
 
 
+@app.post(
+    "/auth/login",
+    response_model=TokenResponse,
+)
+def login(
+    request: LoginRequest,
+):
+    with SessionLocal() as session:
+        user = session.scalar(
+            select(User).where(
+                User.email == request.email
+            )
+        )
+
+        # Keep invalid email and invalid password
+        # indistinguishable to callers.
+        if (
+            user is None
+            or not verify_password(
+                request.password,
+                user.password_hash,
+            )
+        ):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password.",
+            )
+
+        if user.status != "active":
+            raise HTTPException(
+                status_code=403,
+                detail="User account is not active.",
+            )
+
+        if user.role != "customer":
+            raise HTTPException(
+                status_code=403,
+                detail="Customer access required.",
+            )
+
+        access_token = create_access_token(
+            user.id
+        )
+
+        logger.info(
+            "authentication.login_succeeded",
+            extra={
+                "user_id": str(user.id),
+            },
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+        )
 # ============================================================
 # CHAT
 # ============================================================

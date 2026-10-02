@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-
+from src.core.security import hash_password
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -53,7 +53,9 @@ def seed_users(session: Session) -> tuple[User, User]:
     if customer is None:
         customer = User(
             email=CUSTOMER_EMAIL,
-            password_hash="development-only-password-hash",
+            password_hash=hash_password(
+                "VoltNestDev123!"
+            ),
             first_name="Alex",
             last_name="Morgan",
             phone="+15550001001",

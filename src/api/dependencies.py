@@ -1,38 +1,83 @@
-from sqlalchemy import text
+from __future__ import annotations
 
+from fastapi import Depends, HTTPException, status
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
+from sqlalchemy.orm import Session
+
+from src.core.security import decode_access_token
+from src.db.models import User
 from src.db.session import SessionLocal
 
 
-def get_current_customer_id() -> str:
-    """
-    Temporary development authentication dependency.
+bearer_scheme = HTTPBearer(
+    auto_error=False,
+)
 
-    For now, this returns the seeded Alex customer.
 
-    Later this function will be replaced by real authentication
-    (for example JWT/session authentication).
+def get_current_customer_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        bearer_scheme
+    ),
+) -> str:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
 
-    The important security boundary is that customer identity comes
-    from the application, not from the user's chat message.
-    """
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication scheme.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    user_id = decode_access_token(
+        credentials.credentials
+    )
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
 
     with SessionLocal() as session:
-        customer_id = session.execute(
-            text(
-                """
-                SELECT id
-                FROM users
-                WHERE email = :email
-                """
-            ),
-            {
-                "email": "alex@example.com",
-            },
-        ).scalar_one_or_none()
+        user = session.get(
+            User,
+            user_id,
+        )
 
-        if customer_id is None:
-            raise RuntimeError(
-                "Development customer not found."
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid access token.",
+                headers={
+                    "WWW-Authenticate": "Bearer",
+                },
             )
 
-        return str(customer_id)
+        if user.status != "active":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is not active.",
+            )
+
+        if user.role != "customer":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Customer access required.",
+            )
+
+        return str(user.id)

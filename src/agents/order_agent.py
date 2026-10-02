@@ -1,5 +1,4 @@
-from dotenv import load_dotenv
-
+from src.core.config import GROQ_API_KEY
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
@@ -7,7 +6,6 @@ from langgraph.prebuilt import create_react_agent
 from src.tools.order_tools import get_order_tracking
 
 
-load_dotenv()
 
 
 SYSTEM_PROMPT = """

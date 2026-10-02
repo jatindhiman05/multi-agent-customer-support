@@ -1,15 +1,12 @@
 from typing import Literal
 
-from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
-
+from src.core.config import GROQ_API_KEY
 from src.core.logging import get_logger
 from src.core.observability import observe_operation
 from src.graph.state import SupportState
 
-
-load_dotenv()
 
 logger = get_logger(__name__)
 

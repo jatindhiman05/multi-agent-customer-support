@@ -1,8 +1,7 @@
-from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
-
+from src.core.config import GROQ_API_KEY
 from src.tools.return_tools import (
     check_return_eligibility,
     get_return_status,
@@ -10,7 +9,6 @@ from src.tools.return_tools import (
 )
 
 
-load_dotenv()
 
 
 SYSTEM_PROMPT = """

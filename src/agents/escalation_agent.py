@@ -1,14 +1,12 @@
-from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
-
+from src.core.config import GROQ_API_KEY
 from src.tools.escalation_tools import (
     create_support_ticket,
 )
 
 
-load_dotenv()
 
 
 SYSTEM_PROMPT = """
