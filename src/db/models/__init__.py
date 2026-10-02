@@ -28,4 +28,5 @@ __all__ = [
     "ReturnItem",
     "Refund",
     "SupportTicket",
+    "Conversation",
 ]

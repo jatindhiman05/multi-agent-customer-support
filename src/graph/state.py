@@ -4,8 +4,11 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
-
-Route = Literal["order", "knowledge"]
+Route = Literal[
+    "order",
+    "knowledge",
+    "returns",
+]
 
 
 class SupportState(TypedDict):

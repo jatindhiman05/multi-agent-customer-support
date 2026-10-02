@@ -11,7 +11,11 @@ load_dotenv()
 
 
 class RouteDecision(BaseModel):
-    route: Literal["order", "knowledge"] = Field(
+    route: Literal[
+        "order",
+        "knowledge",
+        "returns",
+    ] = Field(
         description="The specialist agent that should handle the request."
     )
 
@@ -33,24 +37,40 @@ customer's request.
 Available specialists:
 
 1. order
-   Use for questions about a customer's specific order, including:
+   Use for customer-specific order and shipment questions:
    - order tracking
    - shipment status
    - tracking numbers
    - delivery status
-   - where a specific order currently is
+   - where an order currently is
 
-2. knowledge
-   Use for general VoltNest information, including:
-   - return policies
-   - warranty policies
-   - shipping policies
-   - general policy questions
-   - company information
+2. returns
+   Use for customer-specific return operations:
+   - "Can I return ORD-1001?"
+   - checking whether an item can be returned
+   - starting or discussing a return for a specific order
+   - checking an existing return status
+   - questions involving a specific return number
 
-Return only the appropriate route through the provided structured output.
+3. knowledge
+   Use for general VoltNest policy or informational questions:
+   - "What is your return policy?"
+   - warranty policy
+   - shipping policy
+   - general company information
+
+Important distinction:
+
+General policy:
+"What is your return policy?"
+→ knowledge
+
+Customer-specific:
+"Can I return ORD-1001?"
+→ returns
 
 Do not answer the customer's question yourself.
+Return only the route using the provided structured output.
 """
 
 

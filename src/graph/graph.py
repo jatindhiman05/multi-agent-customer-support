@@ -3,6 +3,7 @@ from langgraph.graph import END, START, StateGraph
 
 from src.agents.knowledge_agent import knowledge_agent
 from src.agents.order_agent import create_order_agent
+from src.agents.return_agent import create_return_agent
 from src.graph.state import SupportState
 from src.graph.supervisor import supervisor_node
 
@@ -37,12 +38,34 @@ def knowledge_node(state: SupportState) -> dict:
     }
 
 
+def return_node(state: SupportState) -> dict:
+    customer_id = state["customer_id"]
+
+    return_agent = create_return_agent(
+        customer_id=customer_id
+    )
+
+    result = return_agent.invoke(
+        {
+            "messages": state["messages"],
+        }
+    )
+
+    return {
+        "messages": [result["messages"][-1]],
+    }
+
+
 def route_request(state: SupportState) -> str:
     return state["route"]
 
 
 def build_support_graph():
     graph = StateGraph(SupportState)
+
+    # ---------------------------------------------------------
+    # Nodes
+    # ---------------------------------------------------------
 
     graph.add_node(
         "supervisor",
@@ -59,10 +82,23 @@ def build_support_graph():
         knowledge_node,
     )
 
+    graph.add_node(
+        "return_agent",
+        return_node,
+    )
+
+    # ---------------------------------------------------------
+    # Entry
+    # ---------------------------------------------------------
+
     graph.add_edge(
         START,
         "supervisor",
     )
+
+    # ---------------------------------------------------------
+    # Supervisor routing
+    # ---------------------------------------------------------
 
     graph.add_conditional_edges(
         "supervisor",
@@ -70,8 +106,13 @@ def build_support_graph():
         {
             "order": "order_agent",
             "knowledge": "knowledge_agent",
+            "returns": "return_agent",
         },
     )
+
+    # ---------------------------------------------------------
+    # Exit
+    # ---------------------------------------------------------
 
     graph.add_edge(
         "order_agent",
@@ -83,7 +124,13 @@ def build_support_graph():
         END,
     )
 
+    graph.add_edge(
+        "return_agent",
+        END,
+    )
+
     return graph
+
 
 support_graph = build_support_graph().compile(
     checkpointer=checkpointer
