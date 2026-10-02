@@ -47,21 +47,17 @@ from src.graph.supervisor import supervisor_node
 # HELPERS
 # =============================================================================
 
-
 def _extract_tool_proposal(
     messages: list,
     *,
     tool_name: str,
 ) -> dict | None:
     """
-    Find the most recent proposal tool result from an agent run.
+    Find the most recent result produced by a specific tool.
     """
 
     for message in reversed(messages):
-        if not isinstance(
-            message,
-            ToolMessage,
-        ):
+        if not isinstance(message, ToolMessage):
             continue
 
         if message.name != tool_name:
@@ -73,22 +69,69 @@ def _extract_tool_proposal(
             return content
 
         if isinstance(content, str):
+            # Tool messages may contain JSON strings.
             try:
-                parsed = ast.literal_eval(
-                    content
-                )
+                import json
+
+                parsed = json.loads(content)
 
                 if isinstance(parsed, dict):
                     return parsed
 
-            except (
-                ValueError,
-                SyntaxError,
-            ):
-                return None
+            except json.JSONDecodeError:
+                pass
+
+            # Fallback for Python dict string representations.
+            try:
+                parsed = ast.literal_eval(content)
+
+                if isinstance(parsed, dict):
+                    return parsed
+
+            except (ValueError, SyntaxError):
+                pass
 
     return None
 
+def _build_order_status_ui(
+    tool_result: dict,
+) -> dict | None:
+    """
+    Build deterministic structured UI from the trusted
+    get_order_tracking tool result.
+
+    The LLM does not generate this payload.
+    """
+
+    if not tool_result.get("success"):
+        return None
+
+    order_number = tool_result.get(
+        "order_number"
+    )
+    order_status = tool_result.get(
+        "order_status"
+    )
+
+    if not order_number or not order_status:
+        return None
+
+    shipments = tool_result.get(
+        "shipments",
+        [],
+    )
+
+    if not isinstance(shipments, list):
+        shipments = []
+
+    return {
+        "type": "order_status",
+        "data": {
+            "order_number": order_number,
+            "status": order_status,
+            "shipments": shipments,
+        },
+    }
 
 def _build_confirmation_ui(
     action: PendingAction,
@@ -171,7 +214,6 @@ def _build_confirmation_ui(
 # NORMAL SPECIALIST NODES
 # =============================================================================
 
-
 def order_node(
     state: SupportState,
 ) -> dict:
@@ -189,13 +231,24 @@ def order_node(
             }
         )
 
+    tracking_result = _extract_tool_proposal(
+        result["messages"],
+        tool_name="track_order",
+    )
+
+    ui = None
+
+    if tracking_result is not None:
+        ui = _build_order_status_ui(
+            tracking_result
+        )
+
     return {
         "messages": [
             result["messages"][-1]
         ],
-        "ui": None,
+        "ui": ui,
     }
-
 
 def knowledge_node(
     state: SupportState,

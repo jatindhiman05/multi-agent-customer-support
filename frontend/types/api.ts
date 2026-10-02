@@ -52,10 +52,26 @@ export interface CancellationResultUIData {
 }
 
 
+export interface ShipmentEventUIData {
+  status: string;
+  description: string;
+  location: string | null;
+  occurred_at: string;
+}
+
+export interface ShipmentUIData {
+  tracking_number: string;
+  carrier: string;
+  status: string;
+  estimated_delivery_at: string | null;
+  delivered_at: string | null;
+  events: ShipmentEventUIData[];
+}
+
 export interface OrderStatusUIData {
   order_number: string;
   status: string;
-  [key: string]: unknown;
+  shipments: ShipmentUIData[];
 }
 
 

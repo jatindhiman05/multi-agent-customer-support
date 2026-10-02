@@ -1,17 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import {
   CheckCircle2,
+  Clock3,
+  MapPin,
+  Package,
   PackageCheck,
   RotateCcw,
+  Truck,
   TriangleAlert,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 import type {
   CancellationResultUIData,
   ConfirmationUIData,
+  OrderStatusUIData,
   ReturnResultUIData,
+  ShipmentEventUIData,
+  ShipmentUIData,
   SupportUI,
 } from "@/types/api";
 
@@ -23,6 +32,291 @@ type SupportUIProps = {
   onConfirm: () => void;
   onDecline: () => void;
 };
+
+
+function formatDate(
+  value: string | null | undefined,
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+  ).format(date);
+}
+
+
+function formatDateTime(
+  value: string | null | undefined,
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    },
+  ).format(date);
+}
+
+
+function formatStatus(
+  value: string,
+): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    );
+}
+
+
+function getLatestShipmentEvent(
+  shipment: ShipmentUIData,
+): ShipmentEventUIData | null {
+  if (!shipment.events.length) {
+    return null;
+  }
+
+  return shipment.events.reduce(
+    (latest, current) => {
+      const latestTime = new Date(
+        latest.occurred_at,
+      ).getTime();
+
+      const currentTime = new Date(
+        current.occurred_at,
+      ).getTime();
+
+      if (
+        Number.isNaN(currentTime) ||
+        currentTime <= latestTime
+      ) {
+        return latest;
+      }
+
+      return current;
+    },
+  );
+}
+
+
+function getPrimaryShipment(
+  shipments: ShipmentUIData[],
+): ShipmentUIData | null {
+  if (!shipments.length) {
+    return null;
+  }
+
+  /*
+   * The service currently returns the customer's shipment
+   * records. For the compact support card we show the most
+   * recent shipment when multiple shipments exist.
+   */
+  return shipments[shipments.length - 1];
+}
+
+
+function OrderStatusCard({
+  data,
+}: {
+  data: OrderStatusUIData;
+}) {
+  const shipment = getPrimaryShipment(
+    data.shipments,
+  );
+
+  const latestEvent = shipment
+    ? getLatestShipmentEvent(shipment)
+    : null;
+
+  const estimatedDelivery = shipment
+    ? formatDate(
+        shipment.estimated_delivery_at,
+      )
+    : null;
+
+  const deliveredAt = shipment
+    ? formatDate(shipment.delivered_at)
+    : null;
+
+  const latestEventTime = latestEvent
+    ? formatDateTime(
+        latestEvent.occurred_at,
+      )
+    : null;
+
+  const isDelivered =
+    data.status.toLowerCase() ===
+      "delivered" ||
+    shipment?.status.toLowerCase() ===
+      "delivered";
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border bg-background">
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            {isDelivered ? (
+              <PackageCheck className="size-5" />
+            ) : (
+              <Truck className="size-5" />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div>
+                <p className="font-medium">
+                  Order {data.order_number}
+                </p>
+
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Shipment status
+                </p>
+              </div>
+
+              <span className="w-fit rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium">
+                {formatStatus(data.status)}
+              </span>
+            </div>
+
+            {shipment ? (
+              <>
+                <div className="mt-4 grid gap-3 rounded-lg bg-muted/40 p-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Carrier
+                    </p>
+
+                    <p className="mt-1 text-sm font-medium">
+                      {shipment.carrier}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Tracking number
+                    </p>
+
+                    <p className="mt-1 break-all text-sm font-medium">
+                      {shipment.tracking_number}
+                    </p>
+                  </div>
+
+                  {deliveredAt ? (
+                    <div className="sm:col-span-2">
+                      <p className="text-xs text-muted-foreground">
+                        Delivered
+                      </p>
+
+                      <div className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                        <CheckCircle2 className="size-3.5" />
+                        {deliveredAt}
+                      </div>
+                    </div>
+                  ) : estimatedDelivery ? (
+                    <div className="sm:col-span-2">
+                      <p className="text-xs text-muted-foreground">
+                        Estimated delivery
+                      </p>
+
+                      <div className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                        <Clock3 className="size-3.5" />
+                        {estimatedDelivery}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {latestEvent && (
+                  <div className="mt-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Latest update
+                    </p>
+
+                    <div className="mt-2 flex gap-3">
+                      <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                        <Package className="size-3.5" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {latestEvent.description}
+                        </p>
+
+                        {latestEvent.location && (
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <MapPin className="size-3.5 shrink-0" />
+
+                            <span>
+                              {latestEvent.location}
+                            </span>
+                          </div>
+                        )}
+
+                        {latestEventTime && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {latestEventTime}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="mt-4 rounded-lg bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+                Shipment details are not available yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end border-t bg-muted/20 p-3">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="sm"
+        >
+          <Link
+            href={`/orders/${encodeURIComponent(
+              data.order_number,
+            )}`}
+          >
+            View order
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 
 function ConfirmationCard({
@@ -266,7 +560,10 @@ function ReturnResultCard({
               </span>
 
               <span className="font-medium capitalize">
-                {data.status.replaceAll("_", " ")}
+                {data.status.replaceAll(
+                  "_",
+                  " ",
+                )}
               </span>
             </div>
           </div>
@@ -310,13 +607,17 @@ export function SupportUIRenderer({
         />
       );
 
-    /*
-     * These contracts already exist so the API remains
-     * forward-compatible. We'll give them dedicated
-     * presentation once the corresponding graph nodes
-     * emit their payloads.
-     */
     case "order_status":
+      return (
+        <OrderStatusCard
+          data={ui.data}
+        />
+      );
+
+    /*
+     * Contract exists already. We'll add the ticket
+     * presentation when the escalation node emits it.
+     */
     case "support_ticket":
       return null;
 
