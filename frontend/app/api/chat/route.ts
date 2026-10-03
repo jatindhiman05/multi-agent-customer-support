@@ -68,6 +68,7 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          request_id: crypto.randomUUID(),
           message,
           conversation_id:
             body.conversation_id ?? null,
