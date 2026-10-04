@@ -7,6 +7,10 @@ from langchain_core.messages import (
     SystemMessage,
 )
 
+from src.core.context import (
+    emit_token,
+    get_token_sink,
+)
 from src.core.llm import create_chat_groq
 from src.knowledge.schema import KnowledgeEvidence
 from src.tools.knowledge_tools import retrieve_knowledge
@@ -126,7 +130,9 @@ def _latest_user_message(
 ) -> str:
     for message in reversed(messages):
         if isinstance(message, HumanMessage):
-            content = str(message.content).strip()
+            content = str(
+                message.content
+            ).strip()
 
             if content:
                 return content
@@ -139,7 +145,9 @@ def _latest_user_message(
 def _needs_contextualization(
     query: str,
 ) -> bool:
-    normalized = f" {query.lower().strip()} "
+    normalized = (
+        f" {query.lower().strip()} "
+    )
 
     return any(
         marker in normalized
@@ -152,19 +160,29 @@ def _recent_conversation(
     *,
     max_messages: int = 4,
 ) -> str:
-    relevant = messages[:-1][-max_messages:]
+    relevant = messages[:-1][
+        -max_messages:
+    ]
 
     lines: list[str] = []
 
     for message in relevant:
-        content = str(message.content).strip()
+        content = str(
+            message.content
+        ).strip()
 
         if not content:
             continue
 
-        if isinstance(message, HumanMessage):
+        if isinstance(
+            message,
+            HumanMessage,
+        ):
             role = "Customer"
-        elif isinstance(message, AIMessage):
+        elif isinstance(
+            message,
+            AIMessage,
+        ):
             role = "Support"
         else:
             continue
@@ -179,8 +197,17 @@ def _recent_conversation(
 def _standalone_query(
     messages: list[BaseMessage],
 ) -> str:
-    current_query = _latest_user_message(
-        messages
+    """
+    Produce a retrieval query.
+
+    This is internal model work and must never be
+    exposed through the customer token stream.
+    """
+
+    current_query = (
+        _latest_user_message(
+            messages
+        )
     )
 
     if not _needs_contextualization(
@@ -198,7 +225,9 @@ def _standalone_query(
     response = llm.invoke(
         [
             SystemMessage(
-                content=CONTEXTUALIZATION_PROMPT
+                content=(
+                    CONTEXTUALIZATION_PROMPT
+                )
             ),
             HumanMessage(
                 content=(
@@ -215,11 +244,16 @@ def _standalone_query(
         response.content
     ).strip()
 
-    return rewritten or current_query
+    return (
+        rewritten
+        or current_query
+    )
 
 
 def _format_evidence(
-    evidence: list[KnowledgeEvidence],
+    evidence: list[
+        KnowledgeEvidence
+    ],
 ) -> str:
     if not evidence:
         return (
@@ -237,60 +271,143 @@ def _format_evidence(
             "\n".join(
                 [
                     f"Evidence {position}",
-                    f"Title: {item.title}",
-                    f"Section: {item.heading}",
-                    f"Content:\n{item.content}",
+                    (
+                        f"Title: "
+                        f"{item.title}"
+                    ),
+                    (
+                        f"Section: "
+                        f"{item.heading}"
+                    ),
+                    (
+                        "Content:\n"
+                        f"{item.content}"
+                    ),
                 ]
             )
         )
 
-    return "\n\n".join(sections)
+    return "\n\n".join(
+        sections
+    )
+
+
+def _generate_answer(
+    *,
+    current_question: str,
+    evidence_text: str,
+) -> str:
+    """
+    Generate the customer-facing grounded answer.
+
+    When no request-scoped token sink exists, preserve
+    the normal synchronous invoke() behavior.
+
+    When a token sink exists, stream only this final
+    customer-facing generation and reconstruct the exact
+    authoritative answer from those same chunks.
+    """
+
+    answer_messages = [
+        SystemMessage(
+            content=ANSWER_PROMPT
+        ),
+        HumanMessage(
+            content=(
+                "Customer question:\n"
+                f"{current_question}\n\n"
+                "Authoritative VoltNest evidence:\n"
+                f"{evidence_text}"
+            )
+        ),
+    ]
+
+    if get_token_sink() is None:
+        response = llm.invoke(
+            answer_messages
+        )
+
+        return str(
+            response.content
+        ).strip()
+
+    chunks: list[str] = []
+
+    for chunk in llm.stream(
+        answer_messages
+    ):
+        content_piece = (
+            chunk.content
+        )
+
+        if not isinstance(
+            content_piece,
+            str,
+        ):
+            continue
+
+        if not content_piece:
+            continue
+
+        chunks.append(
+            content_piece
+        )
+
+        emit_token(
+            content_piece
+        )
+
+    return "".join(
+        chunks
+    ).strip()
 
 
 def run_knowledge_agent(
     messages: list[BaseMessage],
 ) -> AIMessage:
     """
-    Deterministic retrieve-then-generate knowledge pipeline.
+    Deterministic retrieve-then-generate knowledge
+    pipeline.
 
-    Retrieval always happens before answer generation. Follow-up
-    questions are contextualized only when needed.
+    Retrieval always happens before answer generation.
+    Follow-up questions are contextualized only when
+    needed.
+
+    Only the final customer-facing answer generation
+    participates in HTTP token streaming.
     """
 
-    current_question = _latest_user_message(
-        messages
+    current_question = (
+        _latest_user_message(
+            messages
+        )
     )
 
-    retrieval_query = _standalone_query(
-        messages
+    retrieval_query = (
+        _standalone_query(
+            messages
+        )
     )
 
     evidence = retrieve_knowledge(
         retrieval_query
     )
-    
-    evidence_text = _format_evidence(
-        evidence
+
+    evidence_text = (
+        _format_evidence(
+            evidence
+        )
     )
 
-    response = llm.invoke(
-        [
-            SystemMessage(
-                content=ANSWER_PROMPT
-            ),
-            HumanMessage(
-                content=(
-                    "Customer question:\n"
-                    f"{current_question}\n\n"
-                    "Authoritative VoltNest evidence:\n"
-                    f"{evidence_text}"
-                )
-            ),
-        ]
+    answer = _generate_answer(
+        current_question=(
+            current_question
+        ),
+        evidence_text=(
+            evidence_text
+        ),
     )
 
     return AIMessage(
-        content=str(
-            response.content
-        ).strip()
+        content=answer
     )

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-
+import json
+import queue
+import threading
 
 import logging
 
@@ -103,7 +105,7 @@ from src.core.logging import (
 )
 
 from src.db.session import SessionLocal
-
+from fastapi.responses import StreamingResponse
 from src.services.conversation_service import (
 
     ConversationAccessDeniedError,
@@ -1204,6 +1206,216 @@ def chat(
 
 
 
+
+@app.post(
+    "/chat/stream",
+)
+def chat_stream(
+    request: ChatRequest,
+    customer_id: str = Depends(
+        get_current_customer_id
+    ),
+):
+    chat_rate_limiter.check(
+        key=customer_id,
+    )
+
+    def event_stream():
+        events: queue.Queue[
+            tuple[str, object]
+        ] = queue.Queue()
+
+        finished = object()
+
+        def emit_event(
+            event_type: str,
+            payload: object,
+        ) -> None:
+            events.put(
+                (
+                    event_type,
+                    payload,
+                )
+            )
+
+        def emit_token(
+            token: str,
+        ) -> None:
+            emit_event(
+                "token",
+                token,
+            )
+
+        def execute_chat() -> None:
+            try:
+                result = ChatService().execute(
+                    request=request,
+                    customer_id=customer_id,
+                    token_sink=emit_token,
+                )
+
+                emit_event(
+                    "final",
+                    result,
+                )
+
+            except ChatRequestConflictError as exc:
+                emit_event(
+                    "error",
+                    {
+                        "code": (
+                            "request_conflict"
+                        ),
+                        "message": str(exc),
+                        "status_code": 409,
+                    },
+                )
+
+            except ChatRequestInProgressError as exc:
+                emit_event(
+                    "error",
+                    {
+                        "code": (
+                            "request_in_progress"
+                        ),
+                        "message": str(exc),
+                        "status_code": 409,
+                    },
+                )
+
+            except Exception:
+                logger.exception(
+                    "chat.stream_failed",
+                    extra={
+                        "chat_request_id": str(
+                            request.request_id
+                        ),
+                    },
+                )
+
+                emit_event(
+                    "error",
+                    {
+                        "code": (
+                            "chat_execution_failed"
+                        ),
+                        "message": (
+                            "The support request "
+                            "could not be completed."
+                        ),
+                        "status_code": 500,
+                    },
+                )
+
+            finally:
+                events.put(
+                    (
+                        "finished",
+                        finished,
+                    )
+                )
+
+        yield (
+            json.dumps(
+                {
+                    "type": "started",
+                    "request_id": str(
+                        request.request_id
+                    ),
+                },
+                separators=(",", ":"),
+            )
+            + "\n"
+        )
+
+        worker = threading.Thread(
+            target=execute_chat,
+            name=(
+                "chat-stream-"
+                f"{request.request_id}"
+            ),
+            daemon=False,
+        )
+
+        worker.start()
+
+        while True:
+            event_type, payload = (
+                events.get()
+            )
+
+            if (
+                event_type == "finished"
+                and payload is finished
+            ):
+                break
+
+            if event_type == "token":
+                yield (
+                    json.dumps(
+                        {
+                            "type": "token",
+                            "delta": payload,
+                        },
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                )
+
+                continue
+
+            if event_type == "final":
+                result = payload
+
+                yield (
+                    json.dumps(
+                        {
+                            "type": "final",
+                            "response": (
+                                result.response
+                            ),
+                            "route": (
+                                result.route
+                            ),
+                            "conversation_id": str(
+                                result.conversation_id
+                            ),
+                            "ui": result.ui,
+                            "replayed": (
+                                result.replayed
+                            ),
+                        },
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                )
+
+                continue
+
+            if event_type == "error":
+                yield (
+                    json.dumps(
+                        {
+                            "type": "error",
+                            **payload,
+                        },
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                )
+
+        worker.join()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": (
+                "no-cache, no-transform"
+            ),
+            "X-Accel-Buffering": "no",
+        },
+    )
 # ============================================================
 
 # CONVERSATIONS

@@ -6,6 +6,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Any
 
 from langchain_core.messages import HumanMessage
@@ -14,7 +15,9 @@ from sqlalchemy.exc import IntegrityError
 from src.api.schemas import ChatRequest
 from src.core.context import (
     reset_conversation_id,
+    reset_token_sink,
     set_conversation_id,
+    set_token_sink,
 )
 from src.db.models import ChatRequestRecord
 from src.db.session import SessionLocal
@@ -59,6 +62,7 @@ class ChatService:
         *,
         request: ChatRequest,
         customer_id: str,
+        token_sink: Callable[[str], None] | None = None,
     ) -> ChatExecutionResult:
         start_time = time.perf_counter()
 
@@ -128,6 +132,13 @@ class ChatService:
                 str(conversation_id)
             )
         )
+
+        token_sink_token = None
+
+        if token_sink is not None:
+            token_sink_token = set_token_sink(
+                token_sink
+            )
 
         try:
             result = support_graph.invoke(
@@ -214,6 +225,11 @@ class ChatService:
             raise
 
         finally:
+            if token_sink_token is not None:
+                reset_token_sink(
+                    token_sink_token
+                )
+
             reset_conversation_id(
                 conversation_token
             )

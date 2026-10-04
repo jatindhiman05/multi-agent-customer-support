@@ -449,6 +449,7 @@ export function SupportApp({
     }
 
     const requestId = crypto.randomUUID();
+
     const currentConversationId =
       conversationId;
 
@@ -458,9 +459,26 @@ export function SupportApp({
       content: message,
     };
 
+    const assistantMessageId =
+      crypto.randomUUID();
+
+    const assistantMessage: SupportMessage = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+    };
+
+    /*
+    * Add both immediately.
+    *
+    * The assistant message acts as the live streaming
+    * target. Token events update this same message
+    * instead of creating a new message per token.
+    */
     setMessages((current) => [
       ...current,
       userMessage,
+      assistantMessage,
     ]);
 
     setInput("");
@@ -469,12 +487,14 @@ export function SupportApp({
 
     try {
       const response = await fetch(
-        "/api/chat",
+        "/api/chat/stream",
         {
           method: "POST",
           headers: {
             "Content-Type":
               "application/json",
+            Accept:
+              "application/x-ndjson",
           },
           body: JSON.stringify({
             request_id: requestId,
@@ -485,9 +505,21 @@ export function SupportApp({
         },
       );
 
-      const data = await readJson(response);
-
       if (!response.ok) {
+        const data = await readJson(response);
+
+        /*
+        * Remove the empty streaming placeholder.
+        * The user's message remains visible.
+        */
+        setMessages((current) =>
+          current.filter(
+            (item) =>
+              item.id !==
+              assistantMessageId,
+          ),
+        );
+
         if (
           response.status === 401 ||
           response.status === 403
@@ -527,40 +559,284 @@ export function SupportApp({
         return;
       }
 
-      const result =
-        data as unknown as ChatResponse;
+      if (!response.body) {
+        setMessages((current) =>
+          current.filter(
+            (item) =>
+              item.id !==
+              assistantMessageId,
+          ),
+        );
 
-      setConversationId(
-        result.conversation_id,
-      );
-      setOrderNumber(null);
+        setError({
+          kind: "server",
+          message:
+            "VoltNest Support returned an empty response.",
+        });
 
-      router.replace(
-        `/support?conversation=${encodeURIComponent(
-          result.conversation_id,
-        )}`,
-        {
-          scroll: false,
-        },
-      );
+        return;
+      }
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: result.response,
-          route: result.route,
-          ui: result.ui,
-        },
-      ]);
+      const reader =
+        response.body.getReader();
+
+      const decoder = new TextDecoder();
+
+      let buffer = "";
+      let streamedContent = "";
+      let receivedFinal = false;
+
+      const processLine = (
+        line: string,
+      ) => {
+        if (!line.trim()) {
+          return;
+        }
+
+        const event = JSON.parse(
+          line,
+        ) as Record<string, unknown>;
+
+        const eventType = event.type;
+
+        if (eventType === "started") {
+          return;
+        }
+
+        if (eventType === "token") {
+          const delta = event.delta;
+
+          if (
+            typeof delta !== "string"
+          ) {
+            throw new Error(
+              "Invalid token event.",
+            );
+          }
+
+          streamedContent += delta;
+
+          setMessages((current) =>
+            current.map((item) =>
+              item.id ===
+              assistantMessageId
+                ? {
+                    ...item,
+                    content:
+                      streamedContent,
+                  }
+                : item,
+            ),
+          );
+
+          return;
+        }
+
+        if (eventType === "error") {
+          const message =
+            typeof event.message ===
+            "string"
+              ? event.message
+              : "VoltNest Support could not process your request.";
+
+          const statusCode =
+            typeof event.status_code ===
+            "number"
+              ? event.status_code
+              : 500;
+
+          const streamError =
+            new Error(message) as Error & {
+              statusCode?: number;
+            };
+
+          streamError.statusCode =
+            statusCode;
+
+          throw streamError;
+        }
+
+        if (eventType === "final") {
+          if (
+            typeof event.response !==
+              "string" ||
+            typeof event.route !==
+              "string" ||
+            typeof
+              event.conversation_id !==
+              "string"
+          ) {
+            throw new Error(
+              "Invalid final chat event.",
+            );
+          }
+
+          receivedFinal = true;
+
+          /*
+          * The final event is authoritative.
+          *
+          * Even though streamedContent should equal
+          * event.response, we deliberately replace
+          * the accumulated text with the persisted
+          * backend result.
+          */
+          setMessages((current) =>
+            current.map((item) =>
+              item.id ===
+              assistantMessageId
+                ? {
+                    ...item,
+                    content:
+                      event.response as string,
+                    route:
+                      event.route as SupportMessage["route"],
+                    ui:
+                      (event.ui ??
+                        null) as SupportMessage["ui"],
+                  }
+                : item,
+            ),
+          );
+
+          const finalConversationId =
+            event.conversation_id;
+
+          setConversationId(
+            finalConversationId,
+          );
+
+          setOrderNumber(null);
+
+          router.replace(
+            `/support?conversation=${encodeURIComponent(
+              finalConversationId,
+            )}`,
+            {
+              scroll: false,
+            },
+          );
+
+          return;
+        }
+
+        throw new Error(
+          "Unknown chat stream event.",
+        );
+      };
+
+      while (true) {
+        const {
+          value,
+          done,
+        } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(
+          value,
+          {
+            stream: true,
+          },
+        );
+
+        const lines = buffer.split("\n");
+
+        /*
+        * The last entry may contain only part
+        * of an NDJSON event, so retain it for
+        * the next network chunk.
+        */
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          processLine(line);
+        }
+      }
+
+      buffer += decoder.decode();
+
+      if (buffer.trim()) {
+        processLine(buffer);
+      }
+
+      if (!receivedFinal) {
+        throw new Error(
+          "Chat stream ended before the final response.",
+        );
+      }
 
       await loadConversations();
-    } catch {
+    } catch (caughtError) {
+      /*
+      * If some text streamed before the failure,
+      * remove that partial assistant response.
+      *
+      * The backend final event is the authority,
+      * so incomplete model output should not
+      * remain looking like a completed answer.
+      */
+      setMessages((current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            assistantMessageId,
+        ),
+      );
+
+      const statusCode =
+        caughtError instanceof Error &&
+        "statusCode" in caughtError &&
+        typeof (
+          caughtError as Error & {
+            statusCode?: unknown;
+          }
+        ).statusCode === "number"
+          ? (
+              caughtError as Error & {
+                statusCode: number;
+              }
+            ).statusCode
+          : null;
+
+      if (statusCode === 409) {
+        setError({
+          kind: "request",
+          message:
+            caughtError instanceof Error
+              ? caughtError.message
+              : "This request is already being processed.",
+        });
+
+        return;
+      }
+
+      if (
+        caughtError instanceof Error &&
+        caughtError.message !==
+          "Chat stream ended before the final response." &&
+        caughtError.message !==
+          "Invalid token event." &&
+        caughtError.message !==
+          "Invalid final chat event." &&
+        caughtError.message !==
+          "Unknown chat stream event."
+      ) {
+        setError({
+          kind: "network",
+          message:
+            caughtError.message,
+        });
+
+        return;
+      }
+
       setError({
         kind: "network",
         message:
-          "Couldn't reach VoltNest Support. Check your connection before sending another message.",
+          "The connection to VoltNest Support was interrupted. Your message remains visible above.",
       });
     } finally {
       setIsSending(false);
@@ -760,9 +1036,13 @@ export function SupportApp({
                   },
                 )}
 
-                {isSending && (
-                  <SupportTypingIndicator />
-                )}
+                {isSending &&
+            !(
+              latestMessage?.role === "assistant" &&
+              latestMessage.content.length > 0
+            ) && (
+              <SupportTypingIndicator />
+            )}
               </div>
             )}
           </div>

@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 from langchain_core.messages import (
     AIMessage,
 )
 
+from src.core.context import (
+    emit_token,
+    get_token_sink,
+)
 from src.core.llm import create_chat_groq
 from src.core.observability import observe_operation
 from src.graph.state import SupportState
@@ -74,21 +80,55 @@ Never identify yourself as a specific internal specialist.
 def conversation_node(
     state: SupportState,
 ) -> dict:
+    messages = [
+        ("system", SYSTEM_PROMPT),
+        *state["messages"],
+    ]
+
     with observe_operation(
         "agent",
         agent="conversation",
     ):
-        response = llm.invoke(
-            [
-                ("system", SYSTEM_PROMPT),
-                *state["messages"],
-            ]
-        )
+        if get_token_sink() is None:
+            response = llm.invoke(
+                messages
+            )
+
+            content = response.content
+
+        else:
+            chunks: list[str] = []
+
+            for chunk in llm.stream(
+                messages
+            ):
+                content_piece = chunk.content
+
+                if not isinstance(
+                    content_piece,
+                    str,
+                ):
+                    continue
+
+                if not content_piece:
+                    continue
+
+                chunks.append(
+                    content_piece
+                )
+
+                emit_token(
+                    content_piece
+                )
+
+            content = "".join(
+                chunks
+            )
 
     return {
         "messages": [
             AIMessage(
-                content=response.content,
+                content=content,
             )
         ],
         "ui": None,
