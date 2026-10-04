@@ -28,7 +28,7 @@ class ChatRequestRecord(Base):
             name="uq_chat_request_customer_request",
         ),
         CheckConstraint(
-            "status IN ('processing', 'completed')",
+            "status IN ('processing', 'completed', 'failed')",
             name="ck_chat_request_status",
         ),
     )
