@@ -11,7 +11,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 from sqlalchemy.exc import IntegrityError
-
+from sqlalchemy import update
 from src.api.schemas import ChatRequest
 from src.core.context import (
     reset_conversation_id,
@@ -28,8 +28,9 @@ from src.repositories.chat_request_repository import (
 from src.services.conversation_service import (
     ConversationService,
 )
-
-
+from src.core.config import CHAT_PROCESSING_LEASE_SECONDS
+from src.db.models.chat_request_record import ChatRequestRecord
+from datetime import datetime, timedelta, timezone
 logger = logging.getLogger(__name__)
 
 
@@ -115,16 +116,10 @@ class ChatService:
 
         else:
             conversation_id = (
-                self._persist_initial_user_message(
+                self._initialize_request(
                     request=request,
                     customer_uuid=customer_uuid,
                 )
-            )
-
-            self._attach_conversation(
-                customer_uuid=customer_uuid,
-                request_id=request.request_id,
-                conversation_id=conversation_id,
             )
 
         conversation_token = (
@@ -358,9 +353,72 @@ class ChatService:
             )
 
         if existing.status == "processing":
-            raise ChatRequestInProgressError(
-                "This chat request is already "
-                "being processed."
+            now = datetime.now(timezone.utc)
+
+            updated_at = existing.updated_at
+
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(
+                    tzinfo=timezone.utc
+                )
+
+            stale_before = now - timedelta(
+                seconds=CHAT_PROCESSING_LEASE_SECONDS
+            )
+
+            if updated_at > stale_before:
+                raise ChatRequestInProgressError(
+                    "This chat request is already "
+                    "being processed."
+                )
+
+            reclaim = session.execute(
+                update(ChatRequestRecord)
+                .where(
+                    ChatRequestRecord.id == existing.id,
+                    ChatRequestRecord.status
+                    == "processing",
+                    ChatRequestRecord.updated_at
+                    == existing.updated_at,
+                )
+                .values(
+                    updated_at=now,
+                )
+            )
+
+            if reclaim.rowcount != 1:
+                session.rollback()
+
+                raise ChatRequestInProgressError(
+                    "This chat request is already "
+                    "being processed."
+                )
+
+            session.commit()
+
+            logger.warning(
+                "chat.stale_request_reclaimed",
+                extra={
+                    "chat_request_id": str(
+                        existing.request_id
+                    ),
+                    "conversation_id": (
+                        str(existing.conversation_id)
+                        if existing.conversation_id
+                        is not None
+                        else None
+                    ),
+                },
+            )
+
+            return ChatRequestClaim(
+                conversation_id=(
+                    existing.conversation_id
+                ),
+                is_retry=(
+                    existing.conversation_id
+                    is not None
+                ),
             )
 
         if existing.status == "failed":
@@ -403,39 +461,66 @@ class ChatService:
             f"{existing.status!r}."
         )
 
-    def _persist_initial_user_message(
+    def _initialize_request(
         self,
         *,
         request: ChatRequest,
         customer_uuid: uuid.UUID,
     ) -> uuid.UUID:
+        """
+        Atomically initialize a newly claimed chat request.
+
+        The conversation/user message and the idempotency
+        record's conversation_id are committed together.
+
+        This guarantees that a durable initial user message
+        cannot exist without the request record also knowing
+        which conversation owns it.
+        """
+
         with SessionLocal() as session:
             service = ConversationService(
                 session
             )
 
-            if (
-                request.conversation_id
-                is None
-            ):
-                conversation = (
-                    service.create(
-                        customer_id=(
-                            customer_uuid
-                        ),
-                        first_message=(
-                            request.message
-                        ),
-                    )
+            repository = ChatRequestRepository(
+                session
+            )
+
+            record = repository.get(
+                customer_id=customer_uuid,
+                request_id=request.request_id,
+            )
+
+            if record is None:
+                raise RuntimeError(
+                    "Chat request idempotency "
+                    "record disappeared."
+                )
+
+            if record.status != "processing":
+                raise RuntimeError(
+                    "Chat request is no longer "
+                    "in processing state."
+                )
+
+            if record.conversation_id is not None:
+                raise RuntimeError(
+                    "New chat request already has "
+                    "a conversation associated with it."
+                )
+
+            if request.conversation_id is None:
+                conversation = service.create(
+                    customer_id=customer_uuid,
+                    first_message=request.message,
                 )
 
                 logger.info(
                     "conversation.created",
                     extra={
-                        "conversation_id_created": (
-                            str(
-                                conversation.id
-                            )
+                        "conversation_id_created": str(
+                            conversation.id
                         ),
                     },
                 )
@@ -458,47 +543,13 @@ class ChatService:
                 content=request.message,
             )
 
+            record.conversation_id = (
+                conversation.id
+            )
+
             session.commit()
 
             return conversation.id
-
-    def _attach_conversation(
-        self,
-        *,
-        customer_uuid: uuid.UUID,
-        request_id: uuid.UUID,
-        conversation_id: uuid.UUID,
-    ) -> None:
-        with SessionLocal() as session:
-            repository = (
-                ChatRequestRepository(
-                    session
-                )
-            )
-
-            record = repository.get(
-                customer_id=customer_uuid,
-                request_id=request_id,
-            )
-
-            if record is None:
-                raise RuntimeError(
-                    "Chat request idempotency "
-                    "record disappeared."
-                )
-
-            if record.status != "processing":
-                raise RuntimeError(
-                    "Chat request is no longer "
-                    "in processing state."
-                )
-
-            record.conversation_id = (
-                conversation_id
-            )
-
-            session.commit()
-
     def _persist_success(
         self,
         *,

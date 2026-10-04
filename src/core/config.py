@@ -71,6 +71,11 @@ LLM_TIMEOUT_SECONDS = _get_int_env(
     30,
 )
 
+CHAT_PROCESSING_LEASE_SECONDS = _get_int_env(
+    "CHAT_PROCESSING_LEASE_SECONDS",
+    120,
+)
+
 def _required_env(name: str) -> str:
     value = os.getenv(name)
 
