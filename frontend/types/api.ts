@@ -11,7 +11,9 @@ export interface LoginRequest {
   email: string;
   password: string;
 }
-
+export interface OrderListUIData {
+  orders: OrderSummary[];
+}
 
 export interface TokenResponse {
   access_token: string;
@@ -99,6 +101,10 @@ export type SupportUI =
   | {
       type: "order_status";
       data: OrderStatusUIData;
+    }
+  | {
+      type: "order_list";
+      data: OrderListUIData;
     }
   | {
       type: "support_ticket";

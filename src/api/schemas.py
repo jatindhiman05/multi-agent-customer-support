@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
 class SupportUIResponse(BaseModel):
     type: Literal[
         "order_status",
+        "order_list",
         "confirmation",
         "return_result",
         "cancellation_result",

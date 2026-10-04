@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import type {
   CancellationResultUIData,
   ConfirmationUIData,
+  OrderListUIData,
   OrderStatusUIData,
   ReturnResultUIData,
   ShipmentEventUIData,
@@ -31,9 +32,6 @@ import type {
   SupportTicketUIData,
   SupportUI,
 } from "@/types/api";
-
-
-
 
 type SupportUIProps = {
 
@@ -263,8 +261,130 @@ function getPrimaryShipment(
 
 }
 
+function OrderListCard({
+  data,
+}: {
+  data: OrderListUIData;
+}) {
+  if (data.orders.length === 0) {
+    return (
+      <div className="mt-3 rounded-xl border bg-background p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Package className="size-5" />
+          </div>
 
+          <div>
+            <p className="font-medium">
+              No orders found
+            </p>
 
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              There are no orders associated with your account.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border bg-background">
+      <div className="flex items-center gap-3 border-b p-4">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+          <Package className="size-5" />
+        </div>
+
+        <div>
+          <p className="font-medium">
+            Your orders
+          </p>
+
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {data.orders.length}{" "}
+            {data.orders.length === 1
+              ? "order"
+              : "orders"}
+          </p>
+        </div>
+      </div>
+
+      <div className="divide-y">
+        {data.orders.map((order) => {
+          const placedAt =
+            formatDate(order.created_at);
+
+          return (
+            <div
+              key={order.order_number}
+              className="p-4"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">
+                      {order.order_number}
+                    </p>
+
+                    <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium">
+                      {formatStatus(
+                        order.status,
+                      )}
+                    </span>
+                  </div>
+
+                  {placedAt && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Placed {placedAt}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                  <div className="text-left sm:text-right">
+                    <p className="text-xs text-muted-foreground">
+                      Total
+                    </p>
+
+                    <p className="mt-0.5 font-medium">
+                      {new Intl.NumberFormat(
+                        "en-US",
+                        {
+                          style: "currency",
+                          currency:
+                            order.currency,
+                        },
+                      ).format(
+                        Number(
+                          order.total_amount,
+                        ),
+                      )}
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    render={
+                      <Link
+                        href={`/orders/${encodeURIComponent(
+                          order.order_number,
+                        )}`}
+                      />
+                    }
+                  >
+                    View order
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 
 function OrderStatusCard({
@@ -1303,6 +1423,12 @@ export function SupportUIRenderer({
 
       );
 
+      case "order_list":
+        return (
+          <OrderListCard
+            data={ui.data}
+          />
+        );
 
 
     /*

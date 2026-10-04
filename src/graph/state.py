@@ -33,12 +33,12 @@ ActionType = Literal[
 
 UIType = Literal[
     "order_status",
+    "order_list",
     "confirmation",
     "return_result",
     "cancellation_result",
     "support_ticket",
 ]
-
 
 class PendingAction(
     TypedDict,

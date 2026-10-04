@@ -188,6 +188,34 @@ def _extract_tool_proposal(
     return None
 
 
+def _build_order_list_ui(
+    tool_result: dict,
+) -> dict | None:
+    """
+    Build deterministic structured UI from the trusted
+    my_orders tool result.
+
+    The LLM does not generate this payload.
+    """
+
+    if not tool_result.get("success"):
+        return None
+
+    orders = tool_result.get(
+        "orders",
+        [],
+    )
+
+    if not isinstance(orders, list):
+        return None
+
+    return {
+        "type": "order_list",
+        "data": {
+            "orders": orders,
+        },
+    }
+
 
 def _build_order_status_ui(
 
@@ -432,73 +460,50 @@ def _build_confirmation_ui(
 
 
 def order_node(
-
     state: SupportState,
-
 ) -> dict:
 
     order_agent = create_order_agent(
-
         customer_id=state["customer_id"]
-
     )
-
-
 
     with observe_operation(
-
         "agent",
-
         agent="order",
-
     ):
-
         result = order_agent.invoke(
-
             {
-
                 "messages": state["messages"],
-
             }
-
         )
 
-
-
     tracking_result = _extract_tool_proposal(
-
         result["messages"],
-
         tool_name="track_order",
-
     )
 
-
+    order_list_result = _extract_tool_proposal(
+        result["messages"],
+        tool_name="my_orders",
+    )
 
     ui = None
 
-
-
     if tracking_result is not None:
-
         ui = _build_order_status_ui(
-
             tracking_result
-
         )
 
-
+    elif order_list_result is not None:
+        ui = _build_order_list_ui(
+            order_list_result
+        )
 
     return {
-
         "messages": [
-
             result["messages"][-1]
-
         ],
-
         "ui": ui,
-
     }
 
 def payment_node(
