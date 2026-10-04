@@ -12,6 +12,12 @@ The core engineering principle is:
 
 > **LLMs interpret and reason. Application code authorizes and executes.**
 
+## Architecture Documentation
+
+For a detailed breakdown of the agent orchestration, safety boundaries,
+idempotency, streaming, persistence, and deployment architecture, see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ---
 
 ## Live Demo
