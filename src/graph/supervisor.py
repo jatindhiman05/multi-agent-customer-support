@@ -15,6 +15,7 @@ class RouteDecision(BaseModel):
         "knowledge",
         "returns",
         "cancellation",
+        "payment",
         "escalation",
     ] = Field(
         description=(

@@ -18,6 +18,7 @@ Route = Literal[
     "knowledge",
     "returns",
     "cancellation",
+    "payment",
     "escalation",
     "confirmation",
 ]

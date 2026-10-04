@@ -5,7 +5,9 @@ from __future__ import annotations
 import ast
 
 import uuid
-
+from src.agents.payment_agent import (
+    create_payment_agent,
+)
 
 
 from langchain_core.messages import (
@@ -497,7 +499,29 @@ def order_node(
 
     }
 
+def payment_node(
+    state: SupportState,
+) -> dict:
+    payment_agent = create_payment_agent(
+        customer_id=state["customer_id"]
+    )
 
+    with observe_operation(
+        "agent",
+        agent="payment",
+    ):
+        result = payment_agent.invoke(
+            {
+                "messages": state["messages"],
+            }
+        )
+
+    return {
+        "messages": [
+            result["messages"][-1]
+        ],
+        "ui": None,
+    }
 
 def _build_support_ticket_ui(
 
@@ -1697,6 +1721,11 @@ def build_support_graph():
 
     )
 
+    graph.add_node(
+        "payment_agent",
+        payment_node,
+    )
+
 
 
     graph.add_node(
@@ -1804,33 +1833,16 @@ def build_support_graph():
 
 
     graph.add_conditional_edges(
-
         "supervisor",
-
         route_request,
-
         {
-
             "order": "order_agent",
-
+            "payment": "payment_agent",
             "knowledge": "knowledge_agent",
-
             "returns": "return_agent",
-
-            "cancellation": (
-
-                "cancellation_agent"
-
-            ),
-
-            "escalation": (
-
-                "escalation_agent"
-
-            ),
-
+            "cancellation": "cancellation_agent",
+            "escalation": "escalation_agent",
         },
-
     )
 
 
@@ -1877,6 +1889,10 @@ def build_support_graph():
 
     )
 
+    graph.add_edge(
+        "payment_agent",
+        END,
+    )
 
 
     graph.add_edge(
