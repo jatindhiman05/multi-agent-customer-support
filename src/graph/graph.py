@@ -295,7 +295,44 @@ def _build_order_status_ui(
 
     }
 
+def _build_order_details_ui(
+    tool_result: dict,
+) -> dict | None:
+    """
+    Build deterministic structured UI from the trusted
+    order_details tool result.
 
+    The LLM does not generate this payload.
+    """
+
+    if not tool_result.get("success"):
+        return None
+
+    items = tool_result.get("items", [])
+    payments = tool_result.get("payments", [])
+
+    if not isinstance(items, list):
+        return None
+
+    if not isinstance(payments, list):
+        return None
+
+    return {
+        "type": "order_details",
+        "data": {
+            "order_number": tool_result.get("order_number"),
+            "status": tool_result.get("status"),
+            "currency": tool_result.get("currency"),
+            "subtotal": tool_result.get("subtotal"),
+            "shipping_amount": tool_result.get("shipping_amount"),
+            "tax_amount": tool_result.get("tax_amount"),
+            "discount_amount": tool_result.get("discount_amount"),
+            "total_amount": tool_result.get("total_amount"),
+            "created_at": tool_result.get("created_at"),
+            "items": items,
+            "payments": payments,
+        },
+    }
 
 def _build_confirmation_ui(
 
@@ -487,11 +524,21 @@ def order_node(
         tool_name="my_orders",
     )
 
+    order_details_result = _extract_tool_proposal(
+        result["messages"],
+        tool_name="order_details",
+    )
+
     ui = None
 
     if tracking_result is not None:
         ui = _build_order_status_ui(
             tracking_result
+        )
+
+    elif order_details_result is not None:
+        ui = _build_order_details_ui(
+            order_details_result
         )
 
     elif order_list_result is not None:

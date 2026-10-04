@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import type {
   CancellationResultUIData,
   ConfirmationUIData,
+  OrderDetailsUIData,
   OrderListUIData,
   OrderStatusUIData,
   ReturnResultUIData,
@@ -169,7 +170,28 @@ function formatStatus(
 
 }
 
+function formatCurrency(
+  amount: string,
+  currency: string,
+): string {
+  const numericAmount = Number(amount);
 
+  if (!Number.isFinite(numericAmount)) {
+    return `${amount} ${currency}`;
+  }
+
+  try {
+    return new Intl.NumberFormat(
+      "en-US",
+      {
+        style: "currency",
+        currency,
+      },
+    ).format(numericAmount);
+  } catch {
+    return `${amount} ${currency}`;
+  }
+}
 
 
 
@@ -386,6 +408,221 @@ function OrderListCard({
   );
 }
 
+function OrderDetailsCard({
+  data,
+}: {
+  data: OrderDetailsUIData;
+}) {
+  const placedAt = formatDate(
+    data.created_at,
+  );
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border bg-background">
+      <div className="flex items-start gap-3 p-4">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+          <Package className="size-5" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div>
+              <p className="font-medium">
+                Order {data.order_number}
+              </p>
+
+              {placedAt && (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Placed {placedAt}
+                </p>
+              )}
+            </div>
+
+            <span className="w-fit rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium">
+              {formatStatus(data.status)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t">
+        <div className="p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Items
+          </p>
+
+          <div className="mt-3 divide-y rounded-lg border">
+            {data.items.map(
+              (item, index) => (
+                <div
+                  key={`${item.sku}-${index}`}
+                  className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {item.product_name}
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {item.sku} · Qty{" "}
+                      {item.quantity}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 sm:text-right">
+                    <p className="text-sm font-medium">
+                      {formatCurrency(
+                        item.line_total,
+                        data.currency,
+                      )}
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {formatCurrency(
+                        item.unit_price,
+                        data.currency,
+                      )}{" "}
+                      each
+                    </p>
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+
+        <div className="border-t bg-muted/20 p-4">
+          <div className="ml-auto max-w-sm space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                Subtotal
+              </span>
+
+              <span>
+                {formatCurrency(
+                  data.subtotal,
+                  data.currency,
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                Shipping
+              </span>
+
+              <span>
+                {formatCurrency(
+                  data.shipping_amount,
+                  data.currency,
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">
+                Tax
+              </span>
+
+              <span>
+                {formatCurrency(
+                  data.tax_amount,
+                  data.currency,
+                )}
+              </span>
+            </div>
+
+            {Number(
+              data.discount_amount,
+            ) > 0 && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">
+                  Discount
+                </span>
+
+                <span>
+                  -
+                  {formatCurrency(
+                    data.discount_amount,
+                    data.currency,
+                  )}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-4 border-t pt-2 font-medium">
+              <span>Total</span>
+
+              <span>
+                {formatCurrency(
+                  data.total_amount,
+                  data.currency,
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {data.payments.length > 0 && (
+          <div className="border-t p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Payment
+            </p>
+
+            <div className="mt-3 space-y-2">
+              {data.payments.map(
+                (payment, index) => (
+                  <div
+                    key={`${payment.payment_method}-${index}`}
+                    className="flex flex-col gap-2 rounded-lg bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {formatStatus(
+                          payment.payment_method,
+                        )}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatStatus(
+                          payment.status,
+                        )}
+                      </p>
+                    </div>
+
+                    <p className="text-sm font-medium">
+                      {formatCurrency(
+                        payment.amount,
+                        payment.currency,
+                      )}
+                    </p>
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end border-t bg-muted/20 p-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          render={
+            <Link
+              href={`/orders/${encodeURIComponent(
+                data.order_number,
+              )}`}
+            />
+          }
+        >
+          View full order
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function OrderStatusCard({
 
@@ -1429,7 +1666,12 @@ export function SupportUIRenderer({
             data={ui.data}
           />
         );
-
+      case "order_details":
+        return (
+          <OrderDetailsCard
+            data={ui.data}
+          />
+        );
 
     /*
 

@@ -109,6 +109,10 @@ export type SupportUI =
   | {
       type: "support_ticket";
       data: SupportTicketUIData;
+    }
+  | {
+      type: "order_details";
+      data: OrderDetailsUIData;
     };
 
 
@@ -216,4 +220,28 @@ export interface ConversationHistory {
   created_at: string;
   updated_at: string;
   messages: ConversationMessage[];
+}
+
+export interface OrderDetailsPaymentUIData {
+  payment_method: string;
+  status: string;
+  amount: string;
+  currency: string;
+}
+
+export interface OrderDetailsUIData {
+  order_number: string;
+  status: string;
+  currency: string;
+
+  subtotal: string;
+  shipping_amount: string;
+  tax_amount: string;
+  discount_amount: string;
+  total_amount: string;
+
+  created_at: string;
+
+  items: OrderItem[];
+  payments: OrderDetailsPaymentUIData[];
 }

@@ -16,6 +16,7 @@ class SupportUIResponse(BaseModel):
     type: Literal[
         "order_status",
         "order_list",
+        "order_details",
         "confirmation",
         "return_result",
         "cancellation_result",
