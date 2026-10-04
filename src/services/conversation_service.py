@@ -136,6 +136,19 @@ class ConversationService:
 
         return conversation
 
+    def delete_for_customer(
+    self,
+    conversation_id: uuid.UUID,
+    customer_id: uuid.UUID,
+) -> None:
+        conversation = self.get_for_customer(
+            conversation_id=conversation_id,
+            customer_id=customer_id,
+        )
+
+        self.session.delete(conversation)
+        self.session.flush()
+
     def add_message(
         self,
         *,

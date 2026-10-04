@@ -64,7 +64,10 @@ class ChatRequestRecord(Base):
 
     conversation_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("conversations.id"),
+        ForeignKey(
+            "conversations.id",
+            ondelete="SET NULL",
+        ),
         nullable=True,
     )
 

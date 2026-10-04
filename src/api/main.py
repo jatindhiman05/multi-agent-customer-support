@@ -984,3 +984,25 @@ def get_conversation_messages(
                 for message in conversation.messages
             ],
         )
+
+@app.delete(
+    "/conversations/{conversation_id}",
+    status_code=204,
+)
+def delete_conversation(
+    conversation_id: uuid.UUID,
+    customer_id: str = Depends(
+        get_current_customer_id
+    ),
+):
+    customer_uuid = uuid.UUID(customer_id)
+
+    with SessionLocal() as session:
+        service = ConversationService(session)
+
+        service.delete_for_customer(
+            conversation_id=conversation_id,
+            customer_id=customer_uuid,
+        )
+
+        session.commit()

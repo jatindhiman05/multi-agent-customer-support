@@ -1,13 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Loader2,
-  Menu,
-  User,
-} from "lucide-react";
-import Link from "next/link";
+import { Loader2, Menu, User } from "lucide-react";
+
 import { SupportComposer } from "@/components/support/support-composer";
 import { SupportEmptyState } from "@/components/support/support-empty-state";
 import {
@@ -35,7 +32,9 @@ import type {
   ConversationSummary,
 } from "@/types/api";
 
-function messagesFromHistory(history: ConversationHistory): SupportMessage[] {
+function messagesFromHistory(
+  history: ConversationHistory,
+): SupportMessage[] {
   return history.messages.map((message) => ({
     id: message.id,
     role: message.role,
@@ -45,7 +44,9 @@ function messagesFromHistory(history: ConversationHistory): SupportMessage[] {
   }));
 }
 
-async function readJson(response: Response): Promise<Record<string, unknown>> {
+async function readJson(
+  response: Response,
+): Promise<Record<string, unknown>> {
   try {
     return (await response.json()) as Record<string, unknown>;
   } catch {
@@ -53,8 +54,13 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
   }
 }
 
-function detailFrom(data: Record<string, unknown>, fallback: string) {
-  return typeof data.detail === "string" ? data.detail : fallback;
+function detailFrom(
+  data: Record<string, unknown>,
+  fallback: string,
+) {
+  return typeof data.detail === "string"
+    ? data.detail
+    : fallback;
 }
 
 export function SupportApp({
@@ -71,69 +77,142 @@ export function SupportApp({
   const router = useRouter();
 
   const [messages, setMessages] = useState<SupportMessage[]>(
-    () => (initialHistory ? messagesFromHistory(initialHistory) : []),
+    () =>
+      initialHistory
+        ? messagesFromHistory(initialHistory)
+        : [],
   );
-  const [conversationId, setConversationId] = useState<string | null>(
-    initialHistory?.id ?? null,
-  );
+
+  const [conversationId, setConversationId] =
+    useState<string | null>(
+      initialHistory?.id ?? null,
+    );
+
   const [conversations, setConversations] =
-    useState<ConversationSummary[]>(initialConversations);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
-  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+    useState<ConversationSummary[]>(
+      initialConversations,
+    );
+
+  const [
+    isLoadingConversations,
+    setIsLoadingConversations,
+  ] = useState(false);
+
+  const [
+    isLoadingConversation,
+    setIsLoadingConversation,
+  ] = useState(false);
+
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
-  const [error, setError] = useState<SupportError | null>(null);
+
+  const [
+    deletingConversationId,
+    setDeletingConversationId,
+  ] = useState<string | null>(null);
+
+  const [
+    isMobileNavigationOpen,
+    setIsMobileNavigationOpen,
+  ] = useState(false);
+
+  const [error, setError] =
+    useState<SupportError | null>(null);
+
   const [orderNumber, setOrderNumber] =
     useState<string | null>(
       initialOrderNumber,
     );
-  const endRef = useRef<HTMLDivElement>(null);
+
   const loadingConversationRef = useRef(false);
 
+  /*
+   * Scroll only the conversation container.
+   *
+   * Using scrollIntoView() on a bottom sentinel can also move
+   * ancestor/viewport scroll positions. Keeping the scroll
+   * operation scoped to <main> prevents the composer from being
+   * pulled around when a message is sent.
+   */
+  const scrollContainerRef =
+    useRef<HTMLElement>(null);
+
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages, isSending]);
 
-  const handleAuthenticationFailure = useCallback(() => {
-    router.replace("/login");
-    router.refresh();
-  }, [router]);
+  const handleAuthenticationFailure =
+    useCallback(() => {
+      router.replace("/login");
+      router.refresh();
+    }, [router]);
 
-  const loadConversations = useCallback(async () => {
-    try {
-      setIsLoadingConversations(true);
-      const response = await fetch("/api/conversations", {
-        method: "GET",
-        cache: "no-store",
-      });
-      const data = await readJson(response);
+  const loadConversations = useCallback(
+    async () => {
+      try {
+        setIsLoadingConversations(true);
 
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          handleAuthenticationFailure();
-          return;
+        const response = await fetch(
+          "/api/conversations",
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+
+        const data = await readJson(response);
+
+        if (!response.ok) {
+          if (
+            response.status === 401 ||
+            response.status === 403
+          ) {
+            handleAuthenticationFailure();
+            return;
+          }
+
+          throw new Error(
+            detailFrom(
+              data,
+              "Unable to load conversations.",
+            ),
+          );
         }
-        throw new Error(detailFrom(data, "Unable to load conversations."));
-      }
 
-      setConversations(data as unknown as ConversationSummary[]);
-    } catch (caughtError) {
-      setError({
-        kind: "request",
-        message:
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Unable to load conversations.",
-      });
-    } finally {
-      setIsLoadingConversations(false);
-    }
-  }, [handleAuthenticationFailure]);
+        setConversations(
+          data as unknown as ConversationSummary[],
+        );
+      } catch (caughtError) {
+        setError({
+          kind: "request",
+          message:
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Unable to load conversations.",
+        });
+      } finally {
+        setIsLoadingConversations(false);
+      }
+    },
+    [handleAuthenticationFailure],
+  );
 
   const loadConversation = useCallback(
-    async (selectedConversationId: string) => {
-      if (loadingConversationRef.current) return;
+    async (
+      selectedConversationId: string,
+    ) => {
+      if (loadingConversationRef.current) {
+        return;
+      }
 
       if (
         selectedConversationId === conversationId &&
@@ -149,13 +228,22 @@ export function SupportApp({
         setError(null);
 
         const response = await fetch(
-          `/api/conversations/${encodeURIComponent(selectedConversationId)}/messages`,
-          { method: "GET", cache: "no-store" },
+          `/api/conversations/${encodeURIComponent(
+            selectedConversationId,
+          )}/messages`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
         );
+
         const data = await readJson(response);
 
         if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
+          if (
+            response.status === 401 ||
+            response.status === 403
+          ) {
             handleAuthenticationFailure();
             return;
           }
@@ -163,26 +251,46 @@ export function SupportApp({
           if (response.status === 404) {
             setConversationId(null);
             setMessages([]);
-            router.replace("/support");
+            setOrderNumber(null);
+
+            router.replace("/support", {
+              scroll: false,
+            });
+
             setError({
               kind: "request",
-              message: "That conversation is no longer available.",
+              message:
+                "That conversation is no longer available.",
             });
+
             return;
           }
 
           throw new Error(
-            detailFrom(data, "Unable to load this conversation."),
+            detailFrom(
+              data,
+              "Unable to load this conversation.",
+            ),
           );
         }
 
-        const history = data as unknown as ConversationHistory;
+        const history =
+          data as unknown as ConversationHistory;
+
         setConversationId(history.id);
-        setMessages(messagesFromHistory(history));
+        setMessages(
+          messagesFromHistory(history),
+        );
+        setOrderNumber(null);
         setInput("");
+
         router.replace(
-          `/support?conversation=${encodeURIComponent(history.id)}`,
-          { scroll: false },
+          `/support?conversation=${encodeURIComponent(
+            history.id,
+          )}`,
+          {
+            scroll: false,
+          },
         );
       } catch (caughtError) {
         setError({
@@ -206,7 +314,13 @@ export function SupportApp({
   );
 
   function newConversation() {
-    if (isSending || isLoadingConversation) return;
+    if (
+      isSending ||
+      isLoadingConversation ||
+      deletingConversationId
+    ) {
+      return;
+    }
 
     setMessages([]);
     setConversationId(null);
@@ -214,42 +328,170 @@ export function SupportApp({
     setInput("");
     setError(null);
     setIsMobileNavigationOpen(false);
-    router.replace("/support", { scroll: false });
+
+    router.replace("/support", {
+      scroll: false,
+    });
   }
 
-  async function sendMessage(rawMessage: string) {
+  async function deleteConversation(
+    selectedConversationId: string,
+    title: string | null,
+  ) {
+    if (
+      isSending ||
+      isLoadingConversation ||
+      deletingConversationId
+    ) {
+      return;
+    }
+
+    const displayTitle =
+      title?.trim() || "this conversation";
+
+    const confirmed = window.confirm(
+      `Delete "${displayTitle}"?\n\nThis conversation will be removed from your support history.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingConversationId(
+      selectedConversationId,
+    );
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/conversations/${encodeURIComponent(
+          selectedConversationId,
+        )}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        const data = await readJson(response);
+
+        if (
+          response.status === 401 ||
+          response.status === 403
+        ) {
+          handleAuthenticationFailure();
+          return;
+        }
+
+        /*
+         * If another request/device already removed the
+         * conversation, treat the UI state as deleted too.
+         */
+        if (response.status !== 404) {
+          throw new Error(
+            detailFrom(
+              data,
+              "Unable to delete this conversation.",
+            ),
+          );
+        }
+      }
+
+      setConversations((current) =>
+        current.filter(
+          (conversation) =>
+            conversation.id !==
+            selectedConversationId,
+        ),
+      );
+
+      if (
+        selectedConversationId ===
+        conversationId
+      ) {
+        setConversationId(null);
+        setMessages([]);
+        setOrderNumber(null);
+        setInput("");
+        setError(null);
+
+        router.replace("/support", {
+          scroll: false,
+        });
+      }
+
+      setIsMobileNavigationOpen(false);
+    } catch (caughtError) {
+      setError({
+        kind: "request",
+        message:
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to delete this conversation.",
+      });
+    } finally {
+      setDeletingConversationId(null);
+    }
+  }
+
+  async function sendMessage(
+    rawMessage: string,
+  ) {
     const message = rawMessage.trim();
 
-    if (!message || isSending || isLoadingConversation) return;
+    if (
+      !message ||
+      isSending ||
+      isLoadingConversation ||
+      deletingConversationId
+    ) {
+      return;
+    }
 
     const requestId = crypto.randomUUID();
-    
-    const currentConversationId = conversationId;
+    const currentConversationId =
+      conversationId;
+
     const userMessage: SupportMessage = {
       id: crypto.randomUUID(),
       role: "user",
       content: message,
     };
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [
+      ...current,
+      userMessage,
+    ]);
+
     setInput("");
     setError(null);
     setIsSending(true);
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        request_id: requestId,
-        message,
-        conversation_id: currentConversationId,
-      }),
-      });
+      const response = await fetch(
+        "/api/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            request_id: requestId,
+            message,
+            conversation_id:
+              currentConversationId,
+          }),
+        },
+      );
+
       const data = await readJson(response);
 
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+        if (
+          response.status === 401 ||
+          response.status === 403
+        ) {
           handleAuthenticationFailure();
           return;
         }
@@ -260,6 +502,7 @@ export function SupportApp({
             message:
               "You're sending messages too quickly. Please wait a moment and try again.",
           });
+
           return;
         }
 
@@ -269,23 +512,36 @@ export function SupportApp({
             message:
               "VoltNest Support is temporarily unavailable. Your message remains visible above.",
           });
+
           return;
         }
 
         setError({
           kind: "request",
-          message: detailFrom(data, "Unable to send your message."),
+          message: detailFrom(
+            data,
+            "Unable to send your message.",
+          ),
         });
+
         return;
       }
 
-      const result = data as unknown as ChatResponse;
+      const result =
+        data as unknown as ChatResponse;
 
-      setConversationId(result.conversation_id);
+      setConversationId(
+        result.conversation_id,
+      );
       setOrderNumber(null);
+
       router.replace(
-        `/support?conversation=${encodeURIComponent(result.conversation_id)}`,
-        { scroll: false },
+        `/support?conversation=${encodeURIComponent(
+          result.conversation_id,
+        )}`,
+        {
+          scroll: false,
+        },
       );
 
       setMessages((current) => [
@@ -313,34 +569,64 @@ export function SupportApp({
 
   const empty = messages.length === 0;
   const latestMessage = messages.at(-1);
-  const busy = isSending || isLoadingConversation;
+
+  const busy =
+    isSending ||
+    isLoadingConversation ||
+    deletingConversationId !== null;
 
   const sidebarProps = {
     user,
     conversations,
-    activeConversationId: conversationId,
+    activeConversationId:
+      conversationId,
     isLoadingConversations,
     isLoadingConversation,
     isSending,
-    onNewConversation: newConversation,
-    onSelectConversation: (selectedConversationId: string) => {
+    deletingConversationId,
+
+    onNewConversation:
+      newConversation,
+
+    onSelectConversation: (
+      selectedConversationId: string,
+    ) => {
       setIsMobileNavigationOpen(false);
-      void loadConversation(selectedConversationId);
+
+      void loadConversation(
+        selectedConversationId,
+      );
+    },
+
+    onDeleteConversation: (
+      selectedConversationId: string,
+      title: string | null,
+    ) => {
+      void deleteConversation(
+        selectedConversationId,
+        title,
+      );
     },
   };
 
   return (
     <div className="h-dvh overflow-hidden bg-background">
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r bg-muted/20 lg:block">
-        <SupportSidebar {...sidebarProps} />
+        <SupportSidebar
+          {...sidebarProps}
+        />
       </aside>
 
-      <div className="flex h-full flex-col lg:pl-72">
+      <div className="flex h-full min-h-0 flex-col lg:pl-72">
         <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background/95 px-4 md:px-6">
           <div className="flex items-center gap-3">
             <Sheet
-              open={isMobileNavigationOpen}
-              onOpenChange={setIsMobileNavigationOpen}
+              open={
+                isMobileNavigationOpen
+              }
+              onOpenChange={
+                setIsMobileNavigationOpen
+              }
             >
               <SheetTrigger
                 render={
@@ -352,25 +638,39 @@ export function SupportApp({
                 }
               >
                 <Menu className="size-4" />
-                <span className="sr-only">Open navigation</span>
+                <span className="sr-only">
+                  Open navigation
+                </span>
               </SheetTrigger>
+
               <SheetContent
                 side="left"
                 className="w-72 p-0"
                 showCloseButton
               >
                 <SheetHeader className="sr-only">
-                  <SheetTitle>VoltNest Support</SheetTitle>
-                  <SheetDescription>Support navigation</SheetDescription>
+                  <SheetTitle>
+                    VoltNest Support
+                  </SheetTitle>
+                  <SheetDescription>
+                    Support navigation
+                  </SheetDescription>
                 </SheetHeader>
-                <SupportSidebar {...sidebarProps} />
+
+                <SupportSidebar
+                  {...sidebarProps}
+                />
               </SheetContent>
             </Sheet>
 
             <div>
-              <h1 className="font-semibold tracking-tight">Support</h1>
+              <h1 className="font-semibold tracking-tight">
+                Support
+              </h1>
+
               <p className="hidden text-xs text-muted-foreground sm:block">
-                Orders, returns, warranty and account help
+                Orders, returns, warranty and
+                account help
               </p>
             </div>
           </div>
@@ -386,7 +686,9 @@ export function SupportApp({
             <Button
               variant="ghost"
               size="sm"
-              render={<Link href="/account" />}
+              render={
+                <Link href="/account" />
+              }
             >
               <User className="size-4" />
               <span className="hidden sm:inline">
@@ -397,7 +699,8 @@ export function SupportApp({
         </header>
 
         <main
-          className="min-h-0 flex-1 overflow-y-auto"
+          ref={scrollContainerRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           aria-label="Support conversation"
         >
           <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col px-4 md:px-8">
@@ -416,43 +719,69 @@ export function SupportApp({
                 user={user}
                 orderNumber={orderNumber}
                 disabled={busy}
-                onSend={(message) => void sendMessage(message)}
+                onSend={(message) =>
+                  void sendMessage(message)
+                }
               />
             ) : (
               <div className="flex-1 space-y-7 py-8">
-                {messages.map((message) => {
-                  const actionable =
-                    message.role === "assistant" &&
-                    message.ui?.type === "confirmation" &&
-                    latestMessage?.id === message.id;
+                {messages.map(
+                  (message) => {
+                    const actionable =
+                      message.role ===
+                        "assistant" &&
+                      message.ui?.type ===
+                        "confirmation" &&
+                      latestMessage?.id ===
+                        message.id;
 
-                  return (
-                    <SupportMessageItem
-                      key={message.id}
-                      message={message}
-                      actionable={actionable}
-                      isSending={isSending}
-                      onConfirm={() => void sendMessage("Confirm")}
-                      onDecline={() => void sendMessage("Decline")}
-                    />
-                  );
-                })}
+                    return (
+                      <SupportMessageItem
+                        key={message.id}
+                        message={message}
+                        actionable={
+                          actionable
+                        }
+                        isSending={
+                          isSending
+                        }
+                        onConfirm={() =>
+                          void sendMessage(
+                            "Confirm",
+                          )
+                        }
+                        onDecline={() =>
+                          void sendMessage(
+                            "Decline",
+                          )
+                        }
+                      />
+                    );
+                  },
+                )}
 
-                {isSending && <SupportTypingIndicator />}
-                <div ref={endRef} />
+                {isSending && (
+                  <SupportTypingIndicator />
+                )}
               </div>
             )}
           </div>
         </main>
 
-        <SupportComposer
-          input={input}
-          error={error}
-          disabled={busy}
-          onInputChange={setInput}
-          onSend={(message) => void sendMessage(message)}
-          onDismissError={() => setError(null)}
-        />
+        <div className="shrink-0">
+          <SupportComposer
+            input={input}
+            error={error}
+            disabled={busy}
+            onInputChange={setInput}
+            onSend={(message) =>
+              void sendMessage(message)
+            }
+            onDismissError={() =>
+              setError(null)
+            }
+          />
+        </div>
       </div>
     </div>
   );
