@@ -40,6 +40,9 @@ def create_support_ticket(
 
     If an order number is supplied, ownership is verified before
     attaching the order to the ticket.
+
+    If an equivalent active ticket already exists, return that ticket
+    instead of creating a duplicate.
     """
 
     try:
@@ -71,7 +74,11 @@ def create_support_ticket(
                 order_number=order_number,
             )
 
-            if not result.created:
+            if (
+                not result.created
+                and result.reason
+                != "active_ticket_exists"
+            ):
                 session.rollback()
 
                 return {
@@ -79,10 +86,26 @@ def create_support_ticket(
                     "error": result.reason,
                 }
 
-            session.commit()
+            if result.ticket is None:
+                session.rollback()
+
+                return {
+                    "success": False,
+                    "error": "ticket_unavailable",
+                }
+
+            if result.created:
+                session.commit()
+            else:
+                session.rollback()
 
             return {
                 "success": True,
+                "created": result.created,
+                "existing": (
+                    result.reason
+                    == "active_ticket_exists"
+                ),
                 "ticket_number": (
                     result.ticket.ticket_number
                 ),

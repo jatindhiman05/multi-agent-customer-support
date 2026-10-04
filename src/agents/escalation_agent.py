@@ -1,19 +1,19 @@
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
+
+from src.core.llm import create_chat_groq
 from src.tools.escalation_tools import (
     create_support_ticket,
 )
-from src.core.llm import create_chat_groq
-
 
 
 SYSTEM_PROMPT = """
 You are the VoltNest Human Escalation Agent.
 
 Your job is to help customers escalate issues to the human support
-team by creating a support ticket.
+team by creating or reusing a support ticket.
 
-Create a ticket when:
+Create or reuse a ticket when:
 - the customer explicitly asks for a human or support agent
 - the customer explicitly asks to escalate an issue
 - the issue remains unresolved and requires human investigation
@@ -68,19 +68,39 @@ Rules:
     their account and ask them to verify the order number.
     Do not create a generic ticket as a fallback.
 
-13. Only tell the customer that a ticket was created when the tool
+13. Only tell the customer that a ticket exists when the tool
     explicitly returns success=true.
 
-14. After successful ticket creation, tell the customer:
-    - the ticket number returned by the tool
-    - that the ticket is open
-    - that it has been escalated to human support
+14. If create_ticket returns success=true and existing=false:
+    - tell the customer that a support ticket was created
+    - provide the exact ticket_number returned by the tool
+    - state its current status
+    - say that the issue has been escalated to human support
 
-15. Never generate, guess, modify, or invent a ticket number.
+15. If create_ticket returns success=true and existing=true:
+    - DO NOT say that you created or opened a new ticket
+    - tell the customer that an active support ticket already exists
+      for this escalation
+    - provide the exact existing ticket_number returned by the tool
+    - state its current status
+    - say that the issue remains escalated to human support
+
+16. Never generate, guess, modify, or invent a ticket number.
     Use only the ticket_number returned by create_ticket.
 
-16. Do not claim that a human has already reviewed or responded to
+17. Do not claim that a human has already reviewed or responded to
     the ticket.
+
+18. Do not promise that support will respond within a particular
+    timeframe or say phrases such as:
+    - "shortly"
+    - "soon"
+    - "they will be in touch"
+    - "you will hear back"
+    unless such a timeframe is explicitly provided by a trusted tool.
+
+19. Do not expose internal customer IDs, database IDs, agent names,
+    tool names, routing decisions, or other implementation details.
 
 Keep responses concise and professional.
 """
@@ -100,7 +120,7 @@ def create_escalation_agent(
         order_number: str | None = None,
     ) -> dict:
         """
-        Create a support ticket for human review.
+        Create or reuse a support ticket for human review.
 
         Use only when the customer wants or requires human
         escalation.

@@ -12,10 +12,6 @@ from src.repositories.support_ticket_repository import (
 )
 
 
-class OrderNotFoundError(Exception):
-    pass
-
-
 @dataclass(frozen=True)
 class TicketCreationResult:
     created: bool
@@ -53,8 +49,8 @@ class SupportTicketService:
     ):
         self.session = session
 
-        self.tickets = (
-            SupportTicketRepository(session)
+        self.tickets = SupportTicketRepository(
+            session
         )
 
         self.orders = OrderRepository(
@@ -152,6 +148,27 @@ class SupportTicketService:
                 )
 
             order_id = order.id
+
+        # ---------------------------------------------------------
+        # ACTIVE DUPLICATE PROTECTION
+        # ---------------------------------------------------------
+
+        existing_ticket = (
+            self.tickets.find_active_equivalent(
+                user_id=customer_id,
+                order_id=order_id,
+                escalation_reason=(
+                    escalation_reason
+                ),
+            )
+        )
+
+        if existing_ticket is not None:
+            return TicketCreationResult(
+                created=False,
+                reason="active_ticket_exists",
+                ticket=existing_ticket,
+            )
 
         # ---------------------------------------------------------
         # DETERMINISTIC PRIORITY
