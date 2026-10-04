@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from src.db.models import (
     Order,
     Payment,
+    Refund,
 )
 from src.db.session import SessionLocal
 
@@ -56,6 +57,28 @@ def get_seed_payment(
     )
 
 
+def delete_payment_refunds(
+    session: Session,
+    *,
+    payment: Payment,
+) -> int:
+    """
+    Remove refunds created for this mutable demo payment.
+
+    This intentionally affects only the payment belonging to the
+    demo order currently being reset. It does not delete unrelated
+    refunds.
+    """
+
+    result = session.execute(
+        delete(Refund).where(
+            Refund.payment_id == payment.id
+        )
+    )
+
+    return result.rowcount or 0
+
+
 def reset_order(
     session: Session,
     *,
@@ -88,6 +111,11 @@ def reset_order(
             "seed first."
         )
 
+    refund_count = delete_payment_refunds(
+        session,
+        payment=payment,
+    )
+
     order.status = order_status
 
     payment.status = payment_status
@@ -97,7 +125,8 @@ def reset_order(
     print(
         f"{order_number}: "
         f"order -> {order_status}, "
-        f"payment -> {payment_status}"
+        f"payment -> {payment_status}, "
+        f"refunds removed -> {refund_count}"
     )
 
 
