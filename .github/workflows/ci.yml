@@ -70,6 +70,10 @@ jobs:
       - name: Run database migrations
         run: |
           alembic upgrade head
+      
+      - name: Seed test database
+        run: |
+          python -m scripts.seed_db
 
       - name: Test payment and refund repositories
         run: |
