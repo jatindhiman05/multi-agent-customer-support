@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Truck,
   TriangleAlert,
+  CreditCard,
 } from "lucide-react";
 
 
@@ -27,6 +28,7 @@ import type {
   OrderDetailsUIData,
   OrderListUIData,
   OrderStatusUIData,
+  PaymentStatusUIData,
   ReturnResultUIData,
   ShipmentEventUIData,
   ShipmentUIData,
@@ -977,7 +979,231 @@ function OrderStatusCard({
 }
 
 
+function PaymentStatusCard({
+  data,
+}: {
+  data: PaymentStatusUIData;
+}) {
+  return (
+    <div className="mt-3 overflow-hidden rounded-xl border bg-background">
+      <div className="flex items-start gap-3 p-4">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+          <CreditCard className="size-5" />
+        </div>
 
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div>
+              <p className="font-medium">
+                Payment details
+              </p>
+
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Order {data.order_number}
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium">
+              {formatStatus(data.order_status)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {data.payments.length > 0 && (
+        <div className="border-t p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Payments
+          </p>
+
+          <div className="mt-3 space-y-3">
+            {data.payments.map(
+              (payment, index) => (
+                <div
+                  key={`${payment.payment_method}-${payment.amount}-${index}`}
+                  className="rounded-lg border p-3"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium">
+                          {formatStatus(
+                            payment.payment_method,
+                          )}
+                        </p>
+
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                          {formatStatus(
+                            payment.status,
+                          )}
+                        </span>
+                      </div>
+
+                      {payment.provider && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Processed by{" "}
+                          {formatStatus(
+                            payment.provider,
+                          )}
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="text-sm font-medium">
+                      {formatCurrency(
+                        payment.amount,
+                        payment.currency,
+                      )}
+                    </p>
+                  </div>
+
+                  {(payment.failure_message ||
+                    payment.failure_code) && (
+                    <div className="mt-3 flex gap-2 rounded-lg bg-muted/50 px-3 py-2.5">
+                      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+
+                      <div className="min-w-0 text-sm">
+                        <p className="font-medium">
+                          Payment issue
+                        </p>
+
+                        {payment.failure_message && (
+                          <p className="mt-0.5 text-muted-foreground">
+                            {
+                              payment.failure_message
+                            }
+                          </p>
+                        )}
+
+                        {!payment.failure_message &&
+                          payment.failure_code && (
+                            <p className="mt-0.5 text-muted-foreground">
+                              {formatStatus(
+                                payment.failure_code,
+                              )}
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
+      {data.refunds.length > 0 && (
+        <div className="border-t p-4">
+          <div className="flex items-center gap-2">
+            <RotateCcw className="size-4" />
+
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Refunds
+            </p>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            {data.refunds.map(
+              (refund, index) => (
+                <div
+                  key={`${refund.amount}-${refund.status}-${index}`}
+                  className="rounded-lg bg-muted/40 p-3"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium">
+                          Refund
+                        </p>
+
+                        <span className="rounded-full border bg-background px-2 py-0.5 text-xs font-medium">
+                          {formatStatus(
+                            refund.status,
+                          )}
+                        </span>
+                      </div>
+
+                      {refund.reason && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {refund.reason}
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="text-sm font-medium">
+                      {formatCurrency(
+                        refund.amount,
+                        refund.currency,
+                      )}
+                    </p>
+                  </div>
+
+                  {(refund.failure_message ||
+                    refund.failure_code) && (
+                    <div className="mt-3 flex gap-2 rounded-lg border px-3 py-2.5">
+                      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+
+                      <div className="min-w-0 text-sm">
+                        <p className="font-medium">
+                          Refund issue
+                        </p>
+
+                        {refund.failure_message && (
+                          <p className="mt-0.5 text-muted-foreground">
+                            {
+                              refund.failure_message
+                            }
+                          </p>
+                        )}
+
+                        {!refund.failure_message &&
+                          refund.failure_code && (
+                            <p className="mt-0.5 text-muted-foreground">
+                              {formatStatus(
+                                refund.failure_code,
+                              )}
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
+      {data.payments.length === 0 &&
+        data.refunds.length === 0 && (
+          <div className="border-t p-4">
+            <p className="text-sm text-muted-foreground">
+              No payment or refund records are
+              available for this order.
+            </p>
+          </div>
+        )}
+
+      <div className="flex justify-end border-t bg-muted/20 p-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          render={
+            <Link
+              href={`/orders/${encodeURIComponent(
+                data.order_number,
+              )}`}
+            />
+          }
+        >
+          View order
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 
 function ConfirmationCard({
@@ -1669,6 +1895,12 @@ export function SupportUIRenderer({
       case "order_details":
         return (
           <OrderDetailsCard
+            data={ui.data}
+          />
+        );
+      case "payment_status":
+        return (
+          <PaymentStatusCard
             data={ui.data}
           />
         );

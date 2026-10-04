@@ -1,5 +1,7 @@
 export type SupportRoute =
+  | "conversation"
   | "order"
+  | "payment"
   | "knowledge"
   | "returns"
   | "cancellation"
@@ -11,9 +13,7 @@ export interface LoginRequest {
   email: string;
   password: string;
 }
-export interface OrderListUIData {
-  orders: OrderSummary[];
-}
+
 
 export interface TokenResponse {
   access_token: string;
@@ -61,6 +61,7 @@ export interface ShipmentEventUIData {
   occurred_at: string;
 }
 
+
 export interface ShipmentUIData {
   tracking_number: string;
   carrier: string;
@@ -69,6 +70,7 @@ export interface ShipmentUIData {
   delivered_at: string | null;
   events: ShipmentEventUIData[];
 }
+
 
 export interface OrderStatusUIData {
   order_number: string;
@@ -82,6 +84,84 @@ export interface SupportTicketUIData {
   status: string;
   priority: string | null;
   order_number: string | null;
+}
+
+
+export interface OrderSummary {
+  order_number: string;
+  status: string;
+  total_amount: string;
+  currency: string;
+  created_at: string;
+}
+
+
+export interface OrderListUIData {
+  orders: OrderSummary[];
+}
+
+
+export interface OrderItem {
+  sku: string;
+  product_name: string;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+}
+
+
+export interface OrderDetailsPaymentUIData {
+  payment_method: string;
+  status: string;
+  amount: string;
+  currency: string;
+}
+
+
+export interface OrderDetailsUIData {
+  order_number: string;
+  status: string;
+  currency: string;
+
+  subtotal: string;
+  shipping_amount: string;
+  tax_amount: string;
+  discount_amount: string;
+  total_amount: string;
+
+  created_at: string;
+
+  items: OrderItem[];
+  payments: OrderDetailsPaymentUIData[];
+}
+
+
+export interface PaymentStatusPaymentUIData {
+  status: string;
+  amount: string;
+  currency: string;
+  payment_method: string;
+  provider: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+}
+
+
+export interface PaymentStatusRefundUIData {
+  status: string;
+  amount: string;
+  currency: string;
+  reason: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+}
+
+
+export interface PaymentStatusUIData {
+  order_number: string;
+  order_status: string;
+  payments: PaymentStatusPaymentUIData[];
+  refunds: PaymentStatusRefundUIData[];
 }
 
 
@@ -107,12 +187,16 @@ export type SupportUI =
       data: OrderListUIData;
     }
   | {
-      type: "support_ticket";
-      data: SupportTicketUIData;
-    }
-  | {
       type: "order_details";
       data: OrderDetailsUIData;
+    }
+  | {
+      type: "payment_status";
+      data: PaymentStatusUIData;
+    }
+  | {
+      type: "support_ticket";
+      data: SupportTicketUIData;
     };
 
 
@@ -128,24 +212,6 @@ export interface ChatResponse {
   route: SupportRoute;
   conversation_id: string;
   ui: SupportUI | null;
-}
-
-
-export interface OrderSummary {
-  order_number: string;
-  status: string;
-  total_amount: string;
-  currency: string;
-  created_at: string;
-}
-
-
-export interface OrderItem {
-  sku: string;
-  product_name: string;
-  quantity: number;
-  unit_price: string;
-  line_total: string;
 }
 
 
@@ -220,28 +286,4 @@ export interface ConversationHistory {
   created_at: string;
   updated_at: string;
   messages: ConversationMessage[];
-}
-
-export interface OrderDetailsPaymentUIData {
-  payment_method: string;
-  status: string;
-  amount: string;
-  currency: string;
-}
-
-export interface OrderDetailsUIData {
-  order_number: string;
-  status: string;
-  currency: string;
-
-  subtotal: string;
-  shipping_amount: string;
-  tax_amount: string;
-  discount_amount: string;
-  total_amount: string;
-
-  created_at: string;
-
-  items: OrderItem[];
-  payments: OrderDetailsPaymentUIData[];
 }

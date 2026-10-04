@@ -17,6 +17,7 @@ class SupportUIResponse(BaseModel):
         "order_status",
         "order_list",
         "order_details",
+        "payment_status",
         "confirmation",
         "return_result",
         "cancellation_result",

@@ -556,6 +556,7 @@ def order_node(
 def payment_node(
     state: SupportState,
 ) -> dict:
+
     payment_agent = create_payment_agent(
         customer_id=state["customer_id"]
     )
@@ -570,11 +571,109 @@ def payment_node(
             }
         )
 
+    payment_result = _extract_tool_proposal(
+        result["messages"],
+        tool_name="payment_status",
+    )
+
+    ui = None
+
+    if payment_result is not None:
+        ui = _build_payment_status_ui(
+            payment_result
+        )
+
     return {
         "messages": [
             result["messages"][-1]
         ],
-        "ui": None,
+        "ui": ui,
+    }
+
+def _build_payment_status_ui(
+    tool_result: dict,
+) -> dict | None:
+    """
+    Build deterministic structured UI from the trusted
+    payment_status tool result.
+
+    Internal payment/refund UUIDs are intentionally excluded
+    from the customer-facing payload.
+    """
+
+    if not tool_result.get("success"):
+        return None
+
+    order_number = tool_result.get(
+        "order_number"
+    )
+    order_status = tool_result.get(
+        "order_status"
+    )
+
+    payments = tool_result.get(
+        "payments",
+        [],
+    )
+    refunds = tool_result.get(
+        "refunds",
+        [],
+    )
+
+    if not order_number:
+        return None
+
+    if not isinstance(payments, list):
+        return None
+
+    if not isinstance(refunds, list):
+        return None
+
+    safe_payments = [
+        {
+            "status": payment.get("status"),
+            "amount": payment.get("amount"),
+            "currency": payment.get("currency"),
+            "payment_method": payment.get(
+                "payment_method"
+            ),
+            "provider": payment.get("provider"),
+            "failure_code": payment.get(
+                "failure_code"
+            ),
+            "failure_message": payment.get(
+                "failure_message"
+            ),
+        }
+        for payment in payments
+        if isinstance(payment, dict)
+    ]
+
+    safe_refunds = [
+        {
+            "status": refund.get("status"),
+            "amount": refund.get("amount"),
+            "currency": refund.get("currency"),
+            "reason": refund.get("reason"),
+            "failure_code": refund.get(
+                "failure_code"
+            ),
+            "failure_message": refund.get(
+                "failure_message"
+            ),
+        }
+        for refund in refunds
+        if isinstance(refund, dict)
+    ]
+
+    return {
+        "type": "payment_status",
+        "data": {
+            "order_number": order_number,
+            "order_status": order_status,
+            "payments": safe_payments,
+            "refunds": safe_refunds,
+        },
     }
 
 def _build_support_ticket_ui(
