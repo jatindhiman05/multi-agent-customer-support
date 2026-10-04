@@ -56,7 +56,6 @@ import type { CurrentUser } from "@/lib/auth/get-current-user";
 
 import type {
 
-  ChatResponse,
 
   ConversationHistory,
 
