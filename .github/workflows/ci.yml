@@ -46,6 +46,7 @@ jobs:
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: "60"
       CHAT_PROCESSING_LEASE_SECONDS: "120"
+      GROQ_API_KEY: ci-placeholder-not-used
 
     steps:
       - name: Checkout repository
