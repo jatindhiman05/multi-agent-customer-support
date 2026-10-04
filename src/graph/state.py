@@ -14,6 +14,7 @@ from typing_extensions import TypedDict
 
 
 Route = Literal[
+    "conversation",
     "order",
     "knowledge",
     "returns",

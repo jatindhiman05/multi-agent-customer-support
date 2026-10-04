@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-
+from src.graph.conversation import (
+    conversation_node,
+)
 
 import ast
 
@@ -1722,6 +1724,11 @@ def build_support_graph():
     )
 
     graph.add_node(
+        "conversation",
+        conversation_node,
+    )
+
+    graph.add_node(
         "payment_agent",
         payment_node,
     )
@@ -1830,12 +1837,11 @@ def build_support_graph():
 
     # -------------------------------------------------------------------------
 
-
-
     graph.add_conditional_edges(
         "supervisor",
         route_request,
         {
+            "conversation": "conversation",
             "order": "order_agent",
             "payment": "payment_agent",
             "knowledge": "knowledge_agent",
@@ -1891,6 +1897,10 @@ def build_support_graph():
 
     graph.add_edge(
         "payment_agent",
+        END,
+    )
+    graph.add_edge(
+        "conversation",
         END,
     )
 
