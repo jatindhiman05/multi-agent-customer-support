@@ -1,5 +1,5 @@
 import type { FormEvent, KeyboardEvent } from "react";
-import { ArrowUp, X } from "lucide-react";
+import { ArrowUp, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,19 +9,24 @@ export function SupportComposer({
   input,
   error,
   disabled,
+  canRetry,
   onInputChange,
   onSend,
+  onRetry,
   onDismissError,
 }: {
   input: string;
   error: SupportError | null;
   disabled: boolean;
+  canRetry: boolean;
   onInputChange: (value: string) => void;
   onSend: (message: string) => void;
+  onRetry: () => void;
   onDismissError: () => void;
 }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     if (!disabled && input.trim()) {
       onSend(input);
     }
@@ -30,6 +35,7 @@ export function SupportComposer({
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
+
       if (!disabled && input.trim()) {
         onSend(input);
       }
@@ -44,19 +50,35 @@ export function SupportComposer({
             role="alert"
             className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
           >
-            <div>
+            <div className="min-w-0">
               <p>{error.message}</p>
+
               {error.kind === "network" && (
                 <p className="mt-1 text-xs opacity-80">
-                  Your message is still visible above. Check your connection before sending it again.
+                  Your message is still visible above.
                 </p>
               )}
+
+              {canRetry && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-8 gap-2"
+                  disabled={disabled}
+                  onClick={onRetry}
+                >
+                  <RotateCcw className="size-3.5" />
+                  Retry
+                </Button>
+              )}
             </div>
+
             <button
               type="button"
               onClick={onDismissError}
               aria-label="Dismiss error"
-              className="rounded-sm p-1 hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="shrink-0 rounded-sm p-1 hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <X className="size-4" />
             </button>
@@ -74,6 +96,7 @@ export function SupportComposer({
             disabled={disabled}
             aria-label="Support message"
           />
+
           <Button
             type="submit"
             size="icon"
