@@ -50,9 +50,7 @@ export interface CancellationResultUIData {
   order_number: string;
   status: string;
   requires_refund: boolean;
-  refund_id: string | null;
 }
-
 
 export interface ShipmentEventUIData {
   status: string;

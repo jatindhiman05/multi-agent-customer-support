@@ -1724,18 +1724,6 @@ def action_executor_node(
 
 
 
-            if result.get("refund_id"):
-
-                message += (
-
-                    f'\nRefund ID: '
-
-                    f'{result["refund_id"]}'
-
-                )
-
-
-
         else:
 
             message = (
@@ -1769,12 +1757,6 @@ def action_executor_node(
                     "requires_refund"
 
                 ],
-
-                "refund_id": result.get(
-
-                    "refund_id"
-
-                ),
 
             },
 

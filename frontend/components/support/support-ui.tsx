@@ -1532,30 +1532,6 @@ function CancellationResultCard({
 
             </div>
 
-
-
-            {data.refund_id && (
-
-              <div className="flex items-center justify-between gap-4">
-
-                <span className="text-muted-foreground">
-
-                  Refund reference
-
-                </span>
-
-
-
-                <span className="break-all text-right font-medium">
-
-                  {data.refund_id}
-
-                </span>
-
-              </div>
-
-            )}
-
           </div>
 
         </div>
