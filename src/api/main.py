@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import queue
 import threading
-
+from contextvars import copy_context
 import logging
 
 import time
@@ -1328,8 +1328,11 @@ def chat_stream(
             + "\n"
         )
 
+        worker_context = copy_context()
+
         worker = threading.Thread(
-            target=execute_chat,
+            target=worker_context.run,
+            args=(execute_chat,),
             name=(
                 "chat-stream-"
                 f"{request.request_id}"
