@@ -1046,175 +1046,138 @@ def return_node(
 
 
 
-
-
 def cancellation_node(
-
     state: SupportState,
-
 ) -> dict:
+    """
+    Handle cancellation requests.
+
+    The LLM is responsible only for understanding the customer's
+    request and invoking the read-only cancellation eligibility
+    tool.
+
+    Creation of a PendingAction is deterministic application
+    logic and never depends on the LLM choosing to call a
+    mutation/proposal tool.
+    """
 
     cancellation_agent = (
-
         create_cancellation_agent(
-
-            customer_id=state[
-
-                "customer_id"
-
-            ]
-
+            customer_id=state["customer_id"]
         )
-
     )
-
-
 
     with observe_operation(
-
         "agent",
-
         agent="cancellation",
-
     ):
-
         result = cancellation_agent.invoke(
-
             {
-
                 "messages": state["messages"],
-
             }
-
         )
 
-
-
-    proposal = _extract_tool_proposal(
-
+    eligibility = _extract_tool_proposal(
         result["messages"],
-
-        tool_name="propose_cancel_order",
-
+        tool_name="check_cancellation",
     )
 
-
-
-    # No proposal means the agent is asking for information or
-
-    # explaining why cancellation is not allowed.
-
-    if proposal is None:
-
+    # No eligibility result means the agent did not yet have
+    # enough information to evaluate a specific order.
+    #
+    # Example:
+    #   Customer: "I want to cancel my order."
+    #
+    # The agent should ask for the order number.
+    if eligibility is None:
         return {
-
             "messages": [
-
                 result["messages"][-1]
-
             ],
-
             "pending_action": None,
-
             "ui": None,
-
         }
 
-
-
-    if "order_number" not in proposal:
-
+    # The trusted tool itself failed.
+    #
+    # This includes an order that does not exist for the
+    # authenticated customer.
+    if not eligibility.get("success"):
         return {
-
             "messages": [
-
-                AIMessage(
-
-                    content=(
-
-                        "I couldn't safely prepare "
-
-                        "the cancellation. Please "
-
-                        "provide the order number "
-
-                        "again."
-
-                    )
-
-                )
-
+                result["messages"][-1]
             ],
-
             "pending_action": None,
-
             "ui": None,
-
         }
 
+    # Order exists but deterministic business rules say that it
+    # cannot currently be cancelled.
+    if not eligibility.get("allowed"):
+        return {
+            "messages": [
+                result["messages"][-1]
+            ],
+            "pending_action": None,
+            "ui": None,
+        }
 
+    order_number = eligibility.get(
+        "order_number"
+    )
 
+    if not order_number:
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        "I couldn't safely prepare "
+                        "the cancellation. Please "
+                        "provide the order number "
+                        "again."
+                    )
+                )
+            ],
+            "pending_action": None,
+            "ui": None,
+        }
+
+    # At this point:
+    #
+    # 1. The supervisor routed the request to cancellation.
+    # 2. The cancellation agent identified a specific order.
+    # 3. The trusted read-only service confirmed eligibility.
+    #
+    # Therefore application code, rather than the LLM, creates
+    # the pending destructive action.
     pending_action: PendingAction = {
-
         "action_id": str(uuid.uuid4()),
-
         "action_type": "cancel_order",
-
-        "order_number": proposal[
-
-            "order_number"
-
-        ],
-
+        "order_number": order_number,
     }
-
-
 
     return {
-
         "messages": [
-
             AIMessage(
-
                 content=(
-
-                    f'I can cancel order '
-
+                    f"I can cancel order "
                     f'{pending_action["order_number"]}.'
-
                     "\n\n"
-
                     "If the order has a refundable "
-
                     "captured payment, the backend "
-
                     "will automatically process the "
-
                     "eligible refund."
-
                     "\n\n"
-
                     "Please confirm if you want me "
-
                     "to cancel this order."
-
                 )
-
             )
-
         ],
-
         "pending_action": pending_action,
-
         "ui": _build_confirmation_ui(
-
             pending_action
-
         ),
-
     }
-
-
 
 
 

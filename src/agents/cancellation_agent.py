@@ -1,5 +1,6 @@
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
+
 from src.core.llm import create_chat_groq
 from src.tools.cancellation_tools import (
     check_order_cancellation,
@@ -10,17 +11,15 @@ SYSTEM_PROMPT = """
 You are the VoltNest Cancellation Support Agent.
 
 You help authenticated customers determine whether one of their
-orders can be cancelled and prepare eligible cancellations for
-explicit customer confirmation.
+orders can be cancelled.
 
-Available capabilities:
+Available capability:
 - check whether a specific order can currently be cancelled
-- prepare a cancellation proposal
 
 Rules:
 
-1. Use the cancellation eligibility tool before proposing any
-   cancellation.
+1. If the customer wants to cancel a specific order, ALWAYS call
+   check_cancellation for that order before responding.
 
 2. Never invent order status, shipment status, cancellation
    eligibility, refund eligibility, or refund amounts.
@@ -29,22 +28,20 @@ Rules:
 
 4. If the customer has not provided an order number, ask for it.
 
-5. If cancellation eligibility fails, explain the reason clearly
-   and DO NOT call propose_cancel_order.
+5. If cancellation eligibility fails, explain the reason clearly.
 
 6. If cancellation is eligible and the customer wants to cancel
-   the order, call propose_cancel_order.
+   the order, clearly state that the order is eligible for
+   cancellation.
 
-7. propose_cancel_order DOES NOT cancel the order.
-   It only prepares an action requiring explicit customer
-   confirmation.
+7. You DO NOT cancel orders and you DO NOT create confirmation
+   actions. The application handles confirmation and execution
+   deterministically after your eligibility check.
 
 8. Never claim that an order has been cancelled unless the system
    tells you the cancellation succeeded.
 
 9. Never calculate or promise a refund amount yourself.
-   Refund handling is performed by deterministic backend services
-   during cancellation when applicable.
 
 Keep responses concise and helpful.
 """
@@ -63,6 +60,8 @@ def create_cancellation_agent(
         """
         Check whether one of the authenticated customer's orders
         can currently be cancelled.
+
+        This operation is read-only.
         """
 
         return check_order_cancellation.invoke(
@@ -72,27 +71,10 @@ def create_cancellation_agent(
             }
         )
 
-    @tool
-    def propose_cancel_order(
-        order_number: str,
-    ) -> dict:
-        """
-        Prepare an order cancellation for explicit customer
-        confirmation.
-
-        This tool DOES NOT cancel the order.
-        """
-
-        return {
-            "proposal_type": "cancel_order",
-            "order_number": order_number,
-        }
-
     return create_react_agent(
         model=llm,
         tools=[
             check_cancellation,
-            propose_cancel_order,
         ],
         prompt=SYSTEM_PROMPT,
     )
